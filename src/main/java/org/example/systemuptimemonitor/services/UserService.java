@@ -4,7 +4,7 @@ import org.example.systemuptimemonitor.dao.InviteLinkDao;
 import org.example.systemuptimemonitor.dao.UserDao;
 import org.example.systemuptimemonitor.exceptions.InviteLinkExpiredException;
 import org.example.systemuptimemonitor.exceptions.RoleMissingException;
-import org.example.systemuptimemonitor.exceptions.UserAlreadyExists;
+import org.example.systemuptimemonitor.exceptions.UserAlreadyExistsException;
 import org.example.systemuptimemonitor.model.InviteLink;
 import org.example.systemuptimemonitor.model.User;
 
@@ -21,32 +21,49 @@ public class UserService {
 
     public void createUser(User user) throws SQLException, RoleMissingException {
         try (Connection connection = DriverManager.getConnection(url, username, password)) {
-            String role = user.getRole();
-            if (userDao.doesOrganizationExists(connection, user.getOrganization())) {
-                if (role == null || (!role.equals("operator") && !role.equals("viewer"))) {
-                    throw new RoleMissingException();
+            try {
+                connection.setAutoCommit(false);
+                String role = user.getRole();
+                if (userDao.doesOrganizationExists(connection, user.getOrganization())) {
+                    if (role == null || (!role.equals("operator") && !role.equals("viewer"))) {
+                        throw new RoleMissingException();
+                    }
+                } else {
+                    user.setRole("admin");
                 }
-            } else {
-                user.setRole("admin");
+                userDao.createUser(connection, user);
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
             }
-            userDao.createUser(connection, user);
         }
     }
 
-    public void createUserFromLink(User user, InviteLink inviteLink) throws SQLException, InviteLinkExpiredException, UserAlreadyExists {
+    public void createUserFromLink(User user, InviteLink inviteLink) throws SQLException, InviteLinkExpiredException, UserAlreadyExistsException {
         try (Connection connection = DriverManager.getConnection(url, username, password)) {
-            if (inviteLink.isExpired()) {
-                throw new InviteLinkExpiredException();
-            }
-            if (inviteLink.getCreatedTime() + 30_000 < System.currentTimeMillis()) {
+            try {
+                connection.setAutoCommit(false);
+                if (inviteLink.isExpired()) {
+                    throw new InviteLinkExpiredException();
+                }
+                if (inviteLink.getCreatedTime() + 30_000 < System.currentTimeMillis()) {
+                    inviteLinkDao.expireInviteLink(connection, inviteLink.getUrl());
+                    throw new InviteLinkExpiredException();
+                }
+                if (userDao.userExists(connection, user.getEmail())) {
+                    throw new UserAlreadyExistsException();
+                }
+                userDao.createUser(connection, user);
                 inviteLinkDao.expireInviteLink(connection, inviteLink.getUrl());
-                throw new InviteLinkExpiredException();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
             }
-            if (userDao.userExists(connection, user.getEmail())) {
-                throw new UserAlreadyExists();
-            }
-            userDao.createUser(connection, user);
-            inviteLinkDao.expireInviteLink(connection, inviteLink.getUrl());
         }
     }
 

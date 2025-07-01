@@ -1,0 +1,8 @@
+<!--<Context>-->
+<!--    <Resource name="jdbc/SystemUptimeDB" auth="Container"-->
+<!--              type="javax.sql.DataSource"-->
+<!--              factory="org.apache.catalina.jdbc.pool.DataSourceFactory"-->
+<!--              username="jeevi-si3005" password="Jeeva@200504"-->
+<!--              url="jdbc:mysql://localhost:3306/sysuptimemonitor"-->
+<!--               />-->
+<!--</Context>-->

@@ -3,6 +3,7 @@ package org.example.systemuptimemonitor.servlets;
 import org.example.systemuptimemonitor.exceptions.RoleMissingException;
 import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.UserService;
+import org.mindrot.jbcrypt.BCrypt;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -31,6 +32,8 @@ public class RegisterUser extends HttpServlet {
         }
 
         String organization = emailSplit[1];
+        String salt = BCrypt.gensalt();
+        password = BCrypt.hashpw(password, salt);
         User user = new User(email, password, role, organization);
         UserService userService = new UserService();
 

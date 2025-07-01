@@ -6,6 +6,7 @@ public class User {
     private String password;
     private String role;
     private String organization;
+    private long loggedIn;
 
     public User(int id, String email, String password, String role, String organization) {
         this.id = id;
@@ -61,4 +62,13 @@ public class User {
     public void setOrganization(String organization) {
         this.organization = organization;
     }
+
+    public long getLoggedIn() {
+        return loggedIn;
+    }
+
+    public void setLoggedIn(long loggedIn) {
+        this.loggedIn = loggedIn;
+    }
+
 }

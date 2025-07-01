@@ -10,6 +10,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.sql.SQLException;
 
 @WebServlet("/generate_invitelink")
@@ -33,5 +34,10 @@ public class GenerateInviteLink extends HttpServlet {
             e.printStackTrace();
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
+
+        resp.setContentType("text/plain");
+        PrintWriter pw = resp.getWriter();
+        pw.println(inviteLink.getUrl());
+        pw.close();
     }
 }

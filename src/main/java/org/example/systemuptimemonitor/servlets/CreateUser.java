@@ -2,10 +2,11 @@ package org.example.systemuptimemonitor.servlets;
 
 import org.example.systemuptimemonitor.dao.InviteLinkDao;
 import org.example.systemuptimemonitor.exceptions.InviteLinkExpiredException;
-import org.example.systemuptimemonitor.exceptions.UserAlreadyExists;
+import org.example.systemuptimemonitor.exceptions.UserAlreadyExistsException;
 import org.example.systemuptimemonitor.model.InviteLink;
 import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.UserService;
+import org.mindrot.jbcrypt.BCrypt;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -47,6 +48,8 @@ public class CreateUser extends HttpServlet {
             return;
         }
 
+        String salt = BCrypt.gensalt();
+        password = BCrypt.hashpw(password, salt);
         User user = new User(email, password, inviteLink.getRole(), organization);
         UserService userService = new UserService();
 
@@ -57,7 +60,7 @@ public class CreateUser extends HttpServlet {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         } catch (InviteLinkExpiredException e) {
             resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invite link expired");
-        } catch (UserAlreadyExists e) {
+        } catch (UserAlreadyExistsException e) {
             resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "User already exists");
         }
     }
