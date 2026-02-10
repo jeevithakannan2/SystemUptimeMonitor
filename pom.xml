@@ -5,9 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.example</groupId>
-    <artifactId>SystemUptimeMonitor</artifactId>
+    <artifactId>WebsiteHealthMonitor</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <name>SystemUptimeMonitor</name>
+    <name>WebsiteHealthMonitor</name>
     <packaging>war</packaging>
 
     <properties>

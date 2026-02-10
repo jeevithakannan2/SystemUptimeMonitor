@@ -1,4 +1,4 @@
-# Copilot Instructions — SystemUptimeMonitor
+# Copilot Instructions — WebsiteHealthMonitor
 
 ## Architecture
 
@@ -84,7 +84,7 @@ Dynamic add/remove via `addMonitor()`/`removeMonitor()` called from `MonitorServ
 
 ```bash
 ./mvnw clean package         # Build WAR
-# Deploy target/SystemUptimeMonitor-1.0-SNAPSHOT.war to Tomcat
+# Deploy target/WebsiteHealthMonitor-1.0-SNAPSHOT.war to Tomcat
 # Place .env file in Tomcat's working directory (catalina.base) or set DB_URL/DB_USERNAME/DB_PASSWORD env vars
 ```
 

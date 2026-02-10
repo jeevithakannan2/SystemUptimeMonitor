@@ -1,4 +1,4 @@
--- SystemUptimeMonitor — PostgreSQL Schema (Multi-Tenant)
+-- WebsiteHealthMonitor — PostgreSQL Schema (Multi-Tenant)
 --
 -- PUBLIC schema: only the organization registry table
 -- Per-org schemas (e.g. org_example_com): fully isolated org data

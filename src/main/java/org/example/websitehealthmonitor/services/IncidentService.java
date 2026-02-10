@@ -1,0 +1,78 @@
+package org.example.websitehealthmonitor.services;
+
+import org.example.websitehealthmonitor.dao.IncidentDao;
+import org.example.websitehealthmonitor.dao.MonitorRunDao;
+import org.example.websitehealthmonitor.exceptions.IncidentAlreadyResolvedException;
+import org.example.websitehealthmonitor.exceptions.MissingIncidentException;
+import org.example.websitehealthmonitor.exceptions.MissingMonitorException;
+import org.example.websitehealthmonitor.model.Incident;
+import org.example.websitehealthmonitor.model.MonitorRun;
+import org.example.websitehealthmonitor.util.DBManager;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class IncidentService {
+    private static final Logger LOG = Logger.getLogger(IncidentService.class.getName());
+    private final static IncidentDao incidentDao = new IncidentDao();
+    private final static MonitorRunDao monitorRunDao = new MonitorRunDao();
+
+    public ArrayList<Incident> getAllIncidentsByOrganization(String organization) throws SQLException {
+        try (Connection connection = DBManager.getConnection(organization)) {
+            return incidentDao.getIncidentsByOrganization(connection, organization);
+        }
+    }
+
+    public ArrayList<Incident> getIncidentsByMonitor(int monitorId, String organization) throws SQLException {
+        try (Connection connection = DBManager.getConnection(organization)) {
+            return incidentDao.getIncidentsByMonitor(connection, monitorId);
+        }
+    }
+
+    public void createIncident(MonitorRun monitorRun, String expectedStatusCodes, String organization) throws SQLException {
+        try (Connection connection = DBManager.getConnection(organization)) {
+            try {
+                connection.setAutoCommit(false);
+                monitorRunDao.createMonitorRun(connection, monitorRun);
+                Incident incident = new Incident(monitorRun.getId(), monitorRun.getMonitor_id(), monitorRun.getTime(), monitorRun.getStatus_code(), expectedStatusCodes);
+                incidentDao.createIncident(connection, incident);
+                connection.commit();
+                LOG.info("Incident created for monitor_run_id=" + monitorRun.getId() + " monitor_id=" + monitorRun.getMonitor_id() + " status_code=" + monitorRun.getStatus_code());
+            } catch (SQLException e) {
+                connection.rollback();
+                LOG.log(Level.SEVERE, "Transaction failed for createIncident", e);
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        }
+    }
+
+    public void resolveLastIncident(int monitorId, long resolvedTime, String organization) throws SQLException {
+        try (Connection connection = DBManager.getConnection(organization)) {
+            Incident incident = incidentDao.getLastUnresolvedIncident(connection, monitorId);
+            if (incident != null) {
+                incident.setResolvedTime(resolvedTime);
+                incident.setResolved(true);
+                incidentDao.updateIncident(connection, incident);
+                LOG.info("Auto-resolved incident id=" + incident.getId() + " for monitor_id=" + monitorId);
+            }
+        }
+    }
+
+    public void resolveIncident(int incidentId, String notes, String organization) throws SQLException, MissingMonitorException, IncidentAlreadyResolvedException {
+        try (Connection connection = DBManager.getConnection(organization)) {
+            Incident incident = incidentDao.getIncidentById(connection, incidentId);
+            if (incident == null) {
+                throw new MissingIncidentException();
+            }
+            if (incident.isResolved()) {
+                throw new IncidentAlreadyResolvedException();
+            }
+            incidentDao.resolveIncident(connection, incidentId, notes);
+            LOG.info("Incident resolved: id=" + incidentId);
+        }
+    }
+}

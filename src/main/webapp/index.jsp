@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SystemUptimeMonitor</title>
+    <title>WebsiteHealthMonitor</title>
     <script>window.location.href = 'login.html';</script>
 </head>
 <body></body>
