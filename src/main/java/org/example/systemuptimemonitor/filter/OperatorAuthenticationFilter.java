@@ -1,7 +1,5 @@
 package org.example.systemuptimemonitor.filter;
 
-import org.example.systemuptimemonitor.dao.UserDao;
-import org.example.systemuptimemonitor.exceptions.MissingUserException;
 import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.util.ErrorResponse;
 import org.example.systemuptimemonitor.util.TokenManager;

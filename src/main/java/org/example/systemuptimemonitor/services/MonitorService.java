@@ -8,9 +8,8 @@ import org.example.systemuptimemonitor.exceptions.MissingMonitorException;
 import org.example.systemuptimemonitor.exceptions.MonitorAlreadyExistsException;
 import org.example.systemuptimemonitor.model.Incident;
 import org.example.systemuptimemonitor.model.Monitor;
-import org.example.systemuptimemonitor.util.MonitorExecutor;
-
 import org.example.systemuptimemonitor.util.DBManager;
+import org.example.systemuptimemonitor.util.MonitorExecutor;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -114,7 +113,7 @@ public class MonitorService {
     public ArrayList<Monitor> getAllMonitorsByOrganization(String organization) throws SQLException {
         try (Connection connection = DBManager.getConnection()) {
             ArrayList<Monitor> monitors = monitorDao.getAllMonitorsByOrganization(connection, organization);
-            for (Monitor monitor: monitors) {
+            for (Monitor monitor : monitors) {
                 monitor.setStatusCodes(statusCodeDao.getStatusCodes(connection, monitor.getId()));
             }
             return monitors;
@@ -130,7 +129,7 @@ public class MonitorService {
     public ArrayList<Monitor> getAllMonitors() throws SQLException {
         try (Connection connection = DBManager.getConnection()) {
             ArrayList<Monitor> monitors = monitorDao.getAllMonitors(connection);
-            for (Monitor monitor: monitors) {
+            for (Monitor monitor : monitors) {
                 monitor.setStatusCodes(statusCodeDao.getStatusCodes(connection, monitor.getId()));
             }
             return monitors;

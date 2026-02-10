@@ -1,8 +1,6 @@
 package org.example.systemuptimemonitor.dao;
 
-import org.example.systemuptimemonitor.exceptions.InviteLinkExpiredException;
 import org.example.systemuptimemonitor.model.InviteLink;
-
 import org.example.systemuptimemonitor.util.DBManager;
 
 import java.sql.*;
@@ -11,7 +9,7 @@ public class InviteLinkDao {
 
     public void createLink(Connection connection, InviteLink inviteLink) throws SQLException {
         String sql = "INSERT INTO invites (created_by, created_time, expired, url, role) VALUES (?,?,?,?,?)";
-        try (PreparedStatement pst = connection.prepareStatement(sql);){
+        try (PreparedStatement pst = connection.prepareStatement(sql)) {
             pst.setInt(1, inviteLink.getCreatedBy());
             pst.setTimestamp(2, new Timestamp(inviteLink.getCreatedTime()));
             pst.setBoolean(3, inviteLink.isExpired());
@@ -27,7 +25,8 @@ public class InviteLinkDao {
             PreparedStatement pst = connection.prepareStatement(sql);
             pst.setString(1, code);
             ResultSet rs = pst.executeQuery();
-            if (rs.next()) return new InviteLink(rs.getInt(1), rs.getInt(2), rs.getTimestamp(3).getTime(), rs.getBoolean(4), rs.getString(5), rs.getString(6));
+            if (rs.next())
+                return new InviteLink(rs.getInt(1), rs.getInt(2), rs.getTimestamp(3).getTime(), rs.getBoolean(4), rs.getString(5), rs.getString(6));
         }
         return null;
     }

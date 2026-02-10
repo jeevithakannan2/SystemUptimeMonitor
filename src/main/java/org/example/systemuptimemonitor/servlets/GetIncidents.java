@@ -38,9 +38,9 @@ public class GetIncidents extends HttpServlet {
         resp.setContentType("application/json");
         PrintWriter pw = resp.getWriter();
         pw.print("{\"incidents\":[");
-        for(int i = 0; i < incidents.size(); i++) {
+        for (int i = 0; i < incidents.size(); i++) {
             Incident incident = incidents.get(i);
-            pw.print("{\"id\":" + incident.getId()+ ",");
+            pw.print("{\"id\":" + incident.getId() + ",");
             pw.print("\"monitor_id\":" + incident.getMonitorId() + ",");
             pw.print("\"monitor_run_id\":" + incident.getMonitorRunId() + ",");
             pw.print("\"down_time\":\"" + new Timestamp(incident.getDownTime()) + "\",");

@@ -2,7 +2,6 @@ package org.example.systemuptimemonitor.servlets;
 
 import org.example.systemuptimemonitor.exceptions.MissingMonitorException;
 import org.example.systemuptimemonitor.model.Monitor;
-import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.MonitorService;
 import org.example.systemuptimemonitor.util.ErrorResponse;
 import org.example.systemuptimemonitor.util.RequestBodyParser;
@@ -43,17 +42,19 @@ public class UpdateMonitor extends HttpServlet {
         try {
             int monitorId = Integer.parseInt(monitorIdStr);
             Monitor monitor = monitorService.getMonitor(monitorId);
-            if(name != null && !name.isEmpty()) monitor.setName(name);
-            if(targetUrl != null && !targetUrl.isEmpty()) monitor.setTargetUrl(targetUrl);
-            if(expected_status_codes != null && !expected_status_codes.isEmpty()) {
+            if (name != null && !name.isEmpty()) monitor.setName(name);
+            if (targetUrl != null && !targetUrl.isEmpty()) monitor.setTargetUrl(targetUrl);
+            if (expected_status_codes != null && !expected_status_codes.isEmpty()) {
                 String[] codes = expected_status_codes.split(",");
                 ArrayList<Integer> statusCodesList = new ArrayList<>();
-                for (String code: codes) statusCodesList.add(Integer.parseInt(code));
+                for (String code : codes) statusCodesList.add(Integer.parseInt(code));
                 monitor.setStatusCodes(statusCodesList);
             }
-            if(check_interval != null && !check_interval.isEmpty()) monitor.setCheckInterval(Integer.parseInt(check_interval));
-            if(enabled != null && !enabled.isEmpty()) monitor.setEnabled(Boolean.parseBoolean(enabled));
-            if(failureCount != null && !failureCount.isEmpty()) monitor.setFailureCount(Integer.parseInt(failureCount));
+            if (check_interval != null && !check_interval.isEmpty())
+                monitor.setCheckInterval(Integer.parseInt(check_interval));
+            if (enabled != null && !enabled.isEmpty()) monitor.setEnabled(Boolean.parseBoolean(enabled));
+            if (failureCount != null && !failureCount.isEmpty())
+                monitor.setFailureCount(Integer.parseInt(failureCount));
             monitorService.updateMonitor(monitor);
             LOG.info("Monitor updated: id=" + monitorId);
         } catch (SQLException e) {

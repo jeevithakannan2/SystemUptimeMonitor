@@ -1,7 +1,6 @@
 package org.example.systemuptimemonitor.servlets;
 
 import org.example.systemuptimemonitor.exceptions.MissingMonitorException;
-import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.MonitorService;
 import org.example.systemuptimemonitor.util.ErrorResponse;
 import org.example.systemuptimemonitor.util.RequestBodyParser;

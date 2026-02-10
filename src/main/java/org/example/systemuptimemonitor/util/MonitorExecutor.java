@@ -23,22 +23,30 @@ import java.util.logging.Logger;
 @WebListener
 public class MonitorExecutor implements ServletContextListener {
     private static final Logger LOG = Logger.getLogger(MonitorExecutor.class.getName());
-    private static class MonitorMap {
-        Monitor monitor;
-        AtomicInteger failCount;
-
-        MonitorMap (Monitor monitor) {
-            this.monitor = monitor;
-            this.failCount = new AtomicInteger(monitor.getFailureCount());
-        }
-    }
-
     private final static ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
     private final static ConcurrentHashMap<Integer, MonitorMap> monitors = new ConcurrentHashMap<>();
     private final static ConcurrentHashMap<Integer, ScheduledFuture<?>> runningMonitors = new ConcurrentHashMap<>();
     private final static IncidentService incidentService = new IncidentService();
     private final static MonitorService monitorService = new MonitorService();
     private final static MonitorRunService monitorRunService = new MonitorRunService();
+
+    public static void removeMonitor(int monitorId) {
+        monitors.remove(monitorId);
+        ScheduledFuture<?> scheduledFuture = runningMonitors.remove(monitorId);
+        if (scheduledFuture != null) {
+            scheduledFuture.cancel(false);
+            LOG.info("Monitor removed from scheduler: id=" + monitorId);
+        }
+    }
+
+    public static void addMonitor(Monitor monitor) {
+        if (!monitor.isEnabled()) return;
+        MonitorMap monitorMap = new MonitorMap(monitor);
+        monitors.put(monitor.getId(), monitorMap);
+        ScheduledFuture<?> scheduledFuture = executorService.scheduleAtFixedRate(new Job(monitorMap), 0, monitor.getCheckInterval(), TimeUnit.SECONDS);
+        runningMonitors.put(monitor.getId(), scheduledFuture);
+        LOG.info("Monitor added to scheduler: id=" + monitor.getId() + " interval=" + monitor.getCheckInterval() + "s");
+    }
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
@@ -53,7 +61,7 @@ public class MonitorExecutor implements ServletContextListener {
         MonitorService monitorService = new MonitorService();
         try {
             ArrayList<Monitor> monitors1 = monitorService.getAllMonitors();
-            for (Monitor monitor: monitors1) {
+            for (Monitor monitor : monitors1) {
                 if (monitor.isEnabled())
                     monitors.put(monitor.getId(), new MonitorMap(monitor));
             }
@@ -63,8 +71,8 @@ public class MonitorExecutor implements ServletContextListener {
             throw new RuntimeException(e);
         }
 
-        for (Map.Entry<Integer, MonitorMap> entry: monitors.entrySet()) {
-            ScheduledFuture<?> scheduledFuture = executorService.scheduleAtFixedRate(new Job(entry.getValue()),0, entry.getValue().monitor.getCheckInterval(), TimeUnit.SECONDS);
+        for (Map.Entry<Integer, MonitorMap> entry : monitors.entrySet()) {
+            ScheduledFuture<?> scheduledFuture = executorService.scheduleAtFixedRate(new Job(entry.getValue()), 0, entry.getValue().monitor.getCheckInterval(), TimeUnit.SECONDS);
             runningMonitors.put(entry.getKey(), scheduledFuture);
         }
         LOG.info("MonitorExecutor started with " + monitors.size() + " active monitors");
@@ -83,10 +91,20 @@ public class MonitorExecutor implements ServletContextListener {
         }
     }
 
+    private static class MonitorMap {
+        Monitor monitor;
+        AtomicInteger failCount;
+
+        MonitorMap(Monitor monitor) {
+            this.monitor = monitor;
+            this.failCount = new AtomicInteger(monitor.getFailureCount());
+        }
+    }
+
     private static class Job implements Runnable {
         private final MonitorMap monitorMap;
 
-        Job (MonitorMap monitorMap) {
+        Job(MonitorMap monitorMap) {
             this.monitorMap = monitorMap;
         }
 
@@ -114,22 +132,22 @@ public class MonitorExecutor implements ServletContextListener {
                 } else {
                     monitorRun.setSuccess(false);
                     monitorRunService.createMonitorRun(monitorRun);
-                    
+
                     int currentFailures = monitorMap.failCount.get();
                     if (currentFailures > 0) {
                         currentFailures = monitorMap.failCount.decrementAndGet();
                     }
-                    
+
                     LOG.warning("Monitor id=" + monitorMap.monitor.getId() + " unexpected status: " + statusCode + " (remaining failures: " + currentFailures + ")");
-                    
+
                     if (currentFailures == 0) {
                         LOG.severe("Monitor id=" + monitorMap.monitor.getId() + " failure threshold reached - creating incident");
                         StringBuilder sb = new StringBuilder();
                         ArrayList<Integer> codes = monitorMap.monitor.getStatusCodes();
                         if (codes != null) {
-                            for(int i=0; i<codes.size(); i++) {
+                            for (int i = 0; i < codes.size(); i++) {
                                 sb.append(codes.get(i));
-                                if(i < codes.size()-1) sb.append(", ");
+                                if (i < codes.size() - 1) sb.append(", ");
                             }
                         }
                         incidentService.createIncident(monitorRun, sb.toString());
@@ -140,23 +158,5 @@ public class MonitorExecutor implements ServletContextListener {
                 LOG.log(Level.SEVERE, "Monitor check failed for id=" + monitorMap.monitor.getId() + " url=" + monitorMap.monitor.getTargetUrl(), e);
             }
         }
-    }
-
-    public static void removeMonitor(int monitorId) {
-        monitors.remove(monitorId);
-        ScheduledFuture<?> scheduledFuture = runningMonitors.remove(monitorId);
-        if (scheduledFuture != null) {
-            scheduledFuture.cancel(false);
-            LOG.info("Monitor removed from scheduler: id=" + monitorId);
-        }
-    }
-
-    public static void addMonitor(Monitor monitor) {
-        if (!monitor.isEnabled()) return;
-        MonitorMap monitorMap = new MonitorMap(monitor);
-        monitors.put(monitor.getId(), monitorMap);
-        ScheduledFuture<?> scheduledFuture = executorService.scheduleAtFixedRate(new Job(monitorMap), 0, monitor.getCheckInterval(), TimeUnit.SECONDS);
-        runningMonitors.put(monitor.getId(), scheduledFuture);
-        LOG.info("Monitor added to scheduler: id=" + monitor.getId() + " interval=" + monitor.getCheckInterval() + "s");
     }
 }

@@ -4,7 +4,6 @@ import org.example.systemuptimemonitor.model.Monitor;
 
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.MissingResourceException;
 
 public class MonitorDao {
 
@@ -63,7 +62,8 @@ public class MonitorDao {
         try (PreparedStatement pst = connection.prepareStatement(sql)) {
             pst.setString(1, organization);
             ResultSet rs = pst.executeQuery();
-            while(rs.next()) monitors.add(new Monitor(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getInt(4), rs.getTimestamp(5).getTime(), rs.getInt(6), rs.getInt(7), rs.getString(8), rs.getBoolean(9)));
+            while (rs.next())
+                monitors.add(new Monitor(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getInt(4), rs.getTimestamp(5).getTime(), rs.getInt(6), rs.getInt(7), rs.getString(8), rs.getBoolean(9)));
         }
         return monitors;
     }
@@ -73,7 +73,8 @@ public class MonitorDao {
         String sql = "SELECT * FROM monitors";
         try (Statement st = connection.createStatement()) {
             ResultSet rs = st.executeQuery(sql);
-            while(rs.next()) monitors.add(new Monitor(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getInt(4), rs.getTimestamp(5).getTime(), rs.getInt(6), rs.getInt(7), rs.getString(8), rs.getBoolean(9)));
+            while (rs.next())
+                monitors.add(new Monitor(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getInt(4), rs.getTimestamp(5).getTime(), rs.getInt(6), rs.getInt(7), rs.getString(8), rs.getBoolean(9)));
         }
         return monitors;
     }

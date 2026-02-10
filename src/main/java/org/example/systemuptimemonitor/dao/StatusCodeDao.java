@@ -10,7 +10,7 @@ public class StatusCodeDao {
     public void addStatusCodes(Connection connection, int monitorId, ArrayList<Integer> statusCodes) throws SQLException {
         String sql = "INSERT INTO status_codes VALUES(?,?)";
         try (PreparedStatement pst = connection.prepareStatement(sql)) {
-            for(int statusCode: statusCodes) {
+            for (int statusCode : statusCodes) {
                 pst.setInt(1, monitorId);
                 pst.setInt(2, statusCode);
                 pst.addBatch();

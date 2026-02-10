@@ -7,7 +7,6 @@ import org.example.systemuptimemonitor.exceptions.RoleMissingException;
 import org.example.systemuptimemonitor.exceptions.UserAlreadyExistsException;
 import org.example.systemuptimemonitor.model.InviteLink;
 import org.example.systemuptimemonitor.model.User;
-
 import org.example.systemuptimemonitor.util.DBManager;
 
 import java.sql.Connection;

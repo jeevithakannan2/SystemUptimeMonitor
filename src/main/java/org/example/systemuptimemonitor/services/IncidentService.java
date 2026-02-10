@@ -7,7 +7,6 @@ import org.example.systemuptimemonitor.exceptions.MissingIncidentException;
 import org.example.systemuptimemonitor.exceptions.MissingMonitorException;
 import org.example.systemuptimemonitor.model.Incident;
 import org.example.systemuptimemonitor.model.MonitorRun;
-
 import org.example.systemuptimemonitor.util.DBManager;
 
 import java.sql.Connection;

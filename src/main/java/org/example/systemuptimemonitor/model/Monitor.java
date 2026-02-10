@@ -14,7 +14,7 @@ public class Monitor {
     private boolean enabled;
     private ArrayList<Integer> statusCodes;
 
-    public Monitor(int id, String name, String targetUrl, int checkInterval, long createdTime, int createdBy, int failureCount,  String organization, boolean enabled) {
+    public Monitor(int id, String name, String targetUrl, int checkInterval, long createdTime, int createdBy, int failureCount, String organization, boolean enabled) {
         this.id = id;
         this.name = name;
         this.targetUrl = targetUrl;
@@ -26,7 +26,7 @@ public class Monitor {
         this.enabled = enabled;
     }
 
-    public Monitor(String name, String targetUrl, int checkInterval, long createdTime, int createdBy, int failureCount,  String organization, boolean enabled) {
+    public Monitor(String name, String targetUrl, int checkInterval, long createdTime, int createdBy, int failureCount, String organization, boolean enabled) {
         this.name = name;
         this.targetUrl = targetUrl;
         this.checkInterval = checkInterval;

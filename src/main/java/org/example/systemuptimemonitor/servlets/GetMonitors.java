@@ -40,9 +40,9 @@ public class GetMonitors extends HttpServlet {
         resp.setContentType("application/json");
         PrintWriter pw = resp.getWriter();
         pw.print("{\"monitors\":[");
-        for(int i = 0; i < monitors.size(); i++) {
+        for (int i = 0; i < monitors.size(); i++) {
             Monitor monitor = monitors.get(i);
-            pw.print("{\"id\":" + monitor.getId()+ ",");
+            pw.print("{\"id\":" + monitor.getId() + ",");
             pw.print("\"name\":\"" + monitor.getName() + "\",");
             pw.print("\"target_url\":\"" + monitor.getTargetUrl() + "\",");
             pw.print("\"check_interval\":" + monitor.getCheckInterval() + ",");

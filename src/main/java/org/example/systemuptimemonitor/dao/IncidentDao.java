@@ -1,7 +1,6 @@
 package org.example.systemuptimemonitor.dao;
 
 import org.example.systemuptimemonitor.model.Incident;
-
 import org.example.systemuptimemonitor.util.DBManager;
 
 import java.sql.*;
@@ -13,21 +12,21 @@ public class IncidentDao {
 
     public void createIncident(Connection connection, Incident incident) throws SQLException {
         String sql = "INSERT INTO incidents (monitor_run_id, down_time, status_code, expected_status_codes) VALUES (?,?,?,?)";
-        try(PreparedStatement pst = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);) {
+        try (PreparedStatement pst = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pst.setInt(1, incident.getMonitorRunId());
             pst.setTimestamp(2, new Timestamp(incident.getDownTime()));
             pst.setInt(3, incident.getStatusCode());
             pst.setString(4, incident.getExpectedStatusCodes());
             pst.executeUpdate();
             ResultSet generatedId = pst.getGeneratedKeys();
-            if(generatedId.next()) incident.setId(generatedId.getInt(1));
+            if (generatedId.next()) incident.setId(generatedId.getInt(1));
         }
     }
 
     public ArrayList<Incident> getIncidentsByMonitor(Connection connection, int monitorId) throws SQLException {
         ArrayList<Incident> incidents = new ArrayList<>();
         String sql = "SELECT i.* FROM incidents i JOIN monitor_runs mr ON mr.id=i.monitor_run_id JOIN monitors m ON m.id=mr.monitor_id WHERE m.id=?";
-        try(PreparedStatement pst = connection.prepareStatement(sql)) {
+        try (PreparedStatement pst = connection.prepareStatement(sql)) {
             pst.setInt(1, monitorId);
             ResultSet rs = pst.executeQuery();
             while (rs.next()) {
@@ -45,10 +44,10 @@ public class IncidentDao {
     public ArrayList<Incident> getIncidentsByOrganization(Connection connection, String organization) throws SQLException {
         ArrayList<Incident> incidents = new ArrayList<>();
         String sql = "SELECT i.*, mr.monitor_id FROM incidents i JOIN monitor_runs mr ON mr.id=i.monitor_run_id JOIN monitors m ON m.id=mr.monitor_id WHERE organization=?";
-        try (PreparedStatement pst = connection.prepareStatement(sql);) {
+        try (PreparedStatement pst = connection.prepareStatement(sql)) {
             pst.setString(1, organization);
             ResultSet rs = pst.executeQuery();
-            while(rs.next()) {
+            while (rs.next()) {
                 Timestamp ts = rs.getTimestamp("resolved_time");
                 long time = 0;
                 if (ts != null)
@@ -62,7 +61,7 @@ public class IncidentDao {
 
     public void updateIncident(Incident incident) throws SQLException {
         String sql = "UPDATE incidents SET resolved=? resolved_time=? WHERE id=?";
-        try(Connection connection = DBManager.getConnection()) {
+        try (Connection connection = DBManager.getConnection()) {
             PreparedStatement pst = connection.prepareStatement(sql);
             pst.setBoolean(1, incident.isResolved());
             pst.setTimestamp(2, new Timestamp(incident.getResolvedTime()));
@@ -72,7 +71,7 @@ public class IncidentDao {
 
     public Incident getLastUnresolvedIncident(Connection connection, int monitorId) throws SQLException {
         String sql = "SELECT i.* FROM incidents i JOIN monitor_runs mr ON mr.id=i.monitor_run_id JOIN monitors m ON m.id=mr.monitor_id WHERE m.id=? AND i.resolved=false";
-        try(PreparedStatement pst = connection.prepareStatement(sql)) {
+        try (PreparedStatement pst = connection.prepareStatement(sql)) {
             pst.setInt(1, monitorId);
             ResultSet rs = pst.executeQuery();
             if (rs.next()) {
@@ -86,7 +85,7 @@ public class IncidentDao {
 
     public Incident getIncidentById(Connection connection, int monitorId) throws SQLException {
         String sql = "SELECT * FROM incidents WHERE id=?";
-        try(PreparedStatement pst = connection.prepareStatement(sql)) {
+        try (PreparedStatement pst = connection.prepareStatement(sql)) {
             pst.setInt(1, monitorId);
             ResultSet rs = pst.executeQuery();
             if (rs.next()) {
@@ -98,7 +97,7 @@ public class IncidentDao {
 
     public void resolveIncident(Connection connection, int incidentId, String notes) throws SQLException {
         String sql = "UPDATE incidents SET resolved=true, resolved_time=?, notes=? WHERE id=?";
-        try(PreparedStatement pst = connection.prepareStatement(sql)) {
+        try (PreparedStatement pst = connection.prepareStatement(sql)) {
             pst.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
             pst.setString(2, notes);
             pst.setInt(3, incidentId);

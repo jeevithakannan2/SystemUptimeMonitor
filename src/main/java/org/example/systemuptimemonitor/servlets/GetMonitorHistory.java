@@ -33,8 +33,8 @@ public class GetMonitorHistory extends HttpServlet {
         try {
             monitorId = Integer.parseInt(idStr);
         } catch (NumberFormatException e) {
-             ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Invalid ID format");
-             return;
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Invalid ID format");
+            return;
         }
 
         MonitorService monitorService = new MonitorService();
@@ -50,9 +50,9 @@ public class GetMonitorHistory extends HttpServlet {
         resp.setContentType("application/json");
         PrintWriter pw = resp.getWriter();
         pw.print("{\"history\":[");
-        for(int i = 0; i < history.size(); i++) {
+        for (int i = 0; i < history.size(); i++) {
             MonitorAudit audit = history.get(i);
-            pw.print("{\"id\":" + audit.getId()+ ",");
+            pw.print("{\"id\":" + audit.getId() + ",");
             pw.print("\"monitor_id\":" + audit.getMonitorId() + ",");
             pw.print("\"operation\":\"" + audit.getOperation() + "\",");
             pw.print("\"time\":\"" + new Timestamp(audit.getTime()) + "\"");

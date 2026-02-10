@@ -2,7 +2,6 @@ package org.example.systemuptimemonitor.services;
 
 import org.example.systemuptimemonitor.dao.MonitorRunDao;
 import org.example.systemuptimemonitor.model.MonitorRun;
-
 import org.example.systemuptimemonitor.util.DBManager;
 
 import java.sql.Connection;

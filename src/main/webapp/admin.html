@@ -61,6 +61,12 @@
     <script src="js/app.js"></script>
     <script>
         if (!requireAuth()) throw 'redirect';
+        
+        const _session = getSession();
+        if (!_session || _session.role !== 'admin') {
+            window.location.href = 'dashboard.html';
+            throw 'redirect';
+        }
 
         let countdownInterval = null;
 

@@ -26,7 +26,7 @@ public class CreateMonitor extends HttpServlet {
         User user = (User) req.getSession().getAttribute("user");
         String name = req.getParameter("name");
         String targetUrl = req.getParameter("target_url");
-        String expected_status_codes= req.getParameter("expected_status_codes");
+        String expected_status_codes = req.getParameter("expected_status_codes");
         String check_interval = req.getParameter("check_interval");
         String enabled = req.getParameter("enabled");
         String failureCount = req.getParameter("failure_count");
@@ -43,11 +43,11 @@ public class CreateMonitor extends HttpServlet {
         if (failureCount == null)
             failureCount1 = 3;
         else
-            failureCount1 =  Integer.parseInt(req.getParameter("failure_count"));
+            failureCount1 = Integer.parseInt(req.getParameter("failure_count"));
 
         String[] codes = expected_status_codes.split(",");
         ArrayList<Integer> statusCodesList = new ArrayList<>();
-        for (String code: codes) statusCodesList.add(Integer.parseInt(code));
+        for (String code : codes) statusCodesList.add(Integer.parseInt(code));
 
         Monitor monitor = new Monitor(name, targetUrl, checkInterval, System.currentTimeMillis(), user.getId(), failureCount1, user.getOrganization(), enabled1);
         monitor.setStatusCodes(statusCodesList);

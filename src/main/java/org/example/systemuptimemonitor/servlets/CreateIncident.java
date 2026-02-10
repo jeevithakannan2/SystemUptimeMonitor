@@ -47,18 +47,18 @@ public class CreateIncident extends HttpServlet {
         // Fetch expected status codes for the monitor
         String expectedCodesStr = "";
         try (Connection conn = DBManager.getConnection()) {
-             StatusCodeDao statusCodeDao = new StatusCodeDao();
-             ArrayList<Integer> codes = statusCodeDao.getStatusCodes(conn, monitorId);
-             if (codes != null && !codes.isEmpty()) {
-                 StringBuilder sb = new StringBuilder();
-                 for(int i=0; i<codes.size(); i++) {
-                     sb.append(codes.get(i));
-                     if(i < codes.size()-1) sb.append(",");
-                 }
-                 expectedCodesStr = sb.toString();
-             }
-        } catch(SQLException e) {
-             LOG.log(Level.WARNING, "Failed to fetch status codes for monitor " + monitorId, e);
+            StatusCodeDao statusCodeDao = new StatusCodeDao();
+            ArrayList<Integer> codes = statusCodeDao.getStatusCodes(conn, monitorId);
+            if (codes != null && !codes.isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < codes.size(); i++) {
+                    sb.append(codes.get(i));
+                    if (i < codes.size() - 1) sb.append(",");
+                }
+                expectedCodesStr = sb.toString();
+            }
+        } catch (SQLException e) {
+            LOG.log(Level.WARNING, "Failed to fetch status codes for monitor " + monitorId, e);
         }
 
         MonitorRun monitorRun = new MonitorRun(monitorId, System.currentTimeMillis(), 0, statusCode);

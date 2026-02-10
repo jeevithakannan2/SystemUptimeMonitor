@@ -6,9 +6,8 @@ import org.example.systemuptimemonitor.exceptions.UserAlreadyExistsException;
 import org.example.systemuptimemonitor.model.InviteLink;
 import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.UserService;
-import org.mindrot.jbcrypt.BCrypt;
-
 import org.example.systemuptimemonitor.util.ErrorResponse;
+import org.mindrot.jbcrypt.BCrypt;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;

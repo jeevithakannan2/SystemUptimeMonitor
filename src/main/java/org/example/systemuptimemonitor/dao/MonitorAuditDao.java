@@ -8,7 +8,7 @@ public class MonitorAuditDao {
 
     public void createAudit(Connection connection, int monitorId, String operation) throws SQLException {
         String sql = "INSERT INTO monitor_audits (monitor_id, operation, time) VALUES (?,?,?)";
-        try(PreparedStatement pst = connection.prepareStatement(sql)) {
+        try (PreparedStatement pst = connection.prepareStatement(sql)) {
             pst.setInt(1, monitorId);
             pst.setString(2, operation);
             pst.setTimestamp(3, new Timestamp(System.currentTimeMillis()));
@@ -18,7 +18,7 @@ public class MonitorAuditDao {
 
     public boolean inAudit(int monitorId) throws SQLException {
         String sql = "SELECT * FROM monitor_audits WHERE id=? AND operation != CREATED";
-        try(Connection connection = DBManager.getConnection()) {
+        try (Connection connection = DBManager.getConnection()) {
             PreparedStatement pst = connection.prepareStatement(sql);
             pst.setInt(1, monitorId);
             ResultSet rs = pst.executeQuery();
@@ -34,10 +34,10 @@ public class MonitorAuditDao {
             ResultSet rs = pst.executeQuery();
             while (rs.next()) {
                 audits.add(new org.example.systemuptimemonitor.model.MonitorAudit(
-                    rs.getInt("id"),
-                    rs.getInt("monitor_id"),
-                    rs.getString("operation"),
-                    rs.getTimestamp("time").getTime()
+                        rs.getInt("id"),
+                        rs.getInt("monitor_id"),
+                        rs.getString("operation"),
+                        rs.getTimestamp("time").getTime()
                 ));
             }
         }

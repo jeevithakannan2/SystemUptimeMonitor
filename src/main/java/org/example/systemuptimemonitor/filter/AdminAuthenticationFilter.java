@@ -1,11 +1,8 @@
 package org.example.systemuptimemonitor.filter;
 
-import org.example.systemuptimemonitor.dao.UserDao;
-import org.example.systemuptimemonitor.exceptions.MissingUserException;
 import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.util.ErrorResponse;
 import org.example.systemuptimemonitor.util.TokenManager;
-import org.mindrot.jbcrypt.BCrypt;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -25,7 +22,7 @@ public class AdminAuthenticationFilter extends HttpFilter {
     protected void doFilter(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws IOException, ServletException {
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
-            for(Cookie cookie: cookies) {
+            for (Cookie cookie : cookies) {
                 if (cookie.getName().equals("token") && TokenManager.isValid(cookie.getValue())) {
                     User user = TokenManager.getUser(cookie.getValue());
                     if (user.getRole().equals("admin")) {

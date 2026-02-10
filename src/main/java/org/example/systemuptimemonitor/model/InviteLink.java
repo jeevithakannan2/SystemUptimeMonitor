@@ -6,15 +6,6 @@ public class InviteLink {
     private long createdTime;
     private boolean expired;
     private String url;
-
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
-
     private String role;
 
     public InviteLink(int id, int createdBy, long createdTime, boolean expired, String url, String role) {
@@ -31,6 +22,14 @@ public class InviteLink {
         this.createdTime = createdTime;
         this.expired = expired;
         this.url = url;
+        this.role = role;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
         this.role = role;
     }
 

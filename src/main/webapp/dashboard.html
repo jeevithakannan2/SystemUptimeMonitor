@@ -11,6 +11,7 @@
         <div class="nav-brand"><span>&#9679;</span> UptimeMonitor</div>
         <div class="nav-links">
             <a href="dashboard.html" class="active">Monitors</a>
+            <a href="admin.html" id="nav-admin" style="display: none;">Admin</a>
             <a href="status.html">Status</a>
             <a href="#" onclick="logout()">Logout</a>
         </div>
@@ -152,6 +153,11 @@
             throw 'redirect';
         }
 
+        // Show Admin nav if user is admin
+        if (_session && _session.role === 'admin') {
+            document.getElementById('nav-admin').style.display = '';
+        }
+
         let monitorsData = [];
 
         async function loadMonitors() {
@@ -164,6 +170,33 @@
                     '<div class="empty-state"><p>Failed to load monitors</p></div>';
             }
         }
+
+        let lastIncidentHash = '';
+
+        async function pollIncidents() {
+            try {
+                const data = await API.getIncidents();
+                const incidents = data.incidents || [];
+
+                // Simple change detection
+                const hash = JSON.stringify(
+                    incidents.map(i => ({
+                        id: i.id,
+                        resolved: i.resolved,
+                        resolved_time: i.resolved_time,
+                        status_code: i.status_code
+                    }))
+                );
+
+                if (hash !== lastIncidentHash) {
+                    lastIncidentHash = hash;
+                    renderIncidents(incidents);
+                }
+            } catch (err) {
+                console.warn('Incident polling failed:', err);
+            }
+        }
+
 
         function renderMonitors() {
             const el = document.getElementById('monitorsTable');
@@ -328,6 +361,7 @@
 
         loadMonitors();
         loadIncidents();
+        setInterval(pollIncidents, 5000);
     </script>
 </body>
 </html>

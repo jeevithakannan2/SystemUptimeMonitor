@@ -39,7 +39,7 @@ public class ViewAll extends HttpServlet {
         resp.setContentType("application/json");
         PrintWriter pw = resp.getWriter();
         pw.print("{\"monitors\":[");
-        for(int i = 0; i < monitors.size(); i++) {
+        for (int i = 0; i < monitors.size(); i++) {
             Monitor monitor = monitors.get(i);
             ArrayList<Incident> incidents = null;
             try {
@@ -48,7 +48,7 @@ public class ViewAll extends HttpServlet {
                 LOG.log(Level.WARNING, "Failed to load incidents for monitor id=" + monitor.getId(), e);
             }
 
-            pw.print("{\"id\":" + monitor.getId()+ ",");
+            pw.print("{\"id\":" + monitor.getId() + ",");
             pw.print("\"name\":\"" + monitor.getName() + "\",");
             pw.print("\"target_url\":\"" + monitor.getTargetUrl() + "\",");
             pw.print("\"check_interval\":" + monitor.getCheckInterval() + ",");
@@ -75,7 +75,7 @@ public class ViewAll extends HttpServlet {
             pw.print("],");
             down = Math.abs(down);
             long total = System.currentTimeMillis() - created;
-            double uptimePct = total > 0 ? ((double)(total - down) / total) * 100.0 : 100.0;
+            double uptimePct = total > 0 ? ((double) (total - down) / total) * 100.0 : 100.0;
             pw.print("\"uptime\":" + String.format("%.2f", uptimePct) + "}");
             if (i < monitors.size() - 1) pw.print(",");
         }

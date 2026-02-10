@@ -9,28 +9,7 @@ public class Incident {
     private int statusCode;
     private String notes;
     private String expectedStatusCodes;
-
-    public boolean isResolved() {
-        return resolved;
-    }
-
-    public void setResolved(boolean resolved) {
-        this.resolved = resolved;
-    }
-
     private boolean resolved;
-
-    @Override
-    public String toString() {
-        return "Incident{" +
-                "id=" + id +
-                ", monitorRunId=" + monitorRunId +
-                ", downTime=" + downTime +
-                ", resolvedTime=" + resolvedTime +
-                ", statusCode=" + statusCode +
-                ", resolved=" + resolved +
-                '}';
-    }
 
     public Incident(int id, int monitorId, int monitorRunId, long downTime, long resolvedTime, int statusCode, boolean resolved, String expectedStatusCodes) {
         this.id = id;
@@ -51,6 +30,7 @@ public class Incident {
         this.statusCode = statusCode;
         this.resolved = resolved;
     }
+
     public Incident(int monitorId, long downTime, int statusCode, String expectedStatusCodes) {
         this.monitorId = monitorId;
         this.downTime = downTime;
@@ -64,13 +44,32 @@ public class Incident {
         this.statusCode = statusCode;
     }
 
+    public boolean isResolved() {
+        return resolved;
+    }
+
+    public void setResolved(boolean resolved) {
+        this.resolved = resolved;
+    }
+
+    @Override
+    public String toString() {
+        return "Incident{" +
+                "id=" + id +
+                ", monitorRunId=" + monitorRunId +
+                ", downTime=" + downTime +
+                ", resolvedTime=" + resolvedTime +
+                ", statusCode=" + statusCode +
+                ", resolved=" + resolved +
+                '}';
+    }
+
     public String getExpectedStatusCodes() {
         return expectedStatusCodes;
     }
 
     public void setExpectedStatusCodes(String expectedStatusCodes) {
         this.expectedStatusCodes = expectedStatusCodes;
-        this.statusCode = statusCode;
     }
 
     public int getId() {
