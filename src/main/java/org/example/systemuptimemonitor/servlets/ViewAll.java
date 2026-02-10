@@ -4,6 +4,7 @@ import org.example.systemuptimemonitor.model.Incident;
 import org.example.systemuptimemonitor.model.Monitor;
 import org.example.systemuptimemonitor.services.IncidentService;
 import org.example.systemuptimemonitor.services.MonitorService;
+import org.example.systemuptimemonitor.util.ErrorResponse;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -15,9 +16,13 @@ import java.io.PrintWriter;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @WebServlet("/status")
 public class ViewAll extends HttpServlet {
+    private static final Logger LOG = Logger.getLogger(ViewAll.class.getName());
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         MonitorService monitorService = new MonitorService();
@@ -27,58 +32,53 @@ public class ViewAll extends HttpServlet {
         try {
             monitors = monitorService.getAllMonitors();
         } catch (SQLException e) {
-            e.printStackTrace();
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            LOG.log(Level.SEVERE, "Failed to load all monitors for status page", e);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to load status");
             return;
         }
         resp.setContentType("application/json");
         PrintWriter pw = resp.getWriter();
-        pw.println("{");
-        pw.print("\"monitors:\"");
-        pw.println("[");
+        pw.print("{\"monitors\":[");
         for(int i = 0; i < monitors.size(); i++) {
             Monitor monitor = monitors.get(i);
             ArrayList<Incident> incidents = null;
             try {
                 incidents = incidentService.getIncidentsByMonitor(monitor.getId());
             } catch (SQLException e) {
-                e.printStackTrace();
+                LOG.log(Level.WARNING, "Failed to load incidents for monitor id=" + monitor.getId(), e);
             }
 
-            pw.println("{");
-            pw.println("\"id\":" + monitor.getId()+ ",");
-            pw.println("\"name\":\"" + monitor.getName() + "\",");
-            pw.println("\"target_url\":\"" + monitor.getTargetUrl() + "\",");
-            pw.println("\"check_interval\":" + monitor.getCheckInterval() + ",");
-            pw.println("\"created_time\":\"" + new Timestamp(monitor.getCreatedTime()) + "\",");
-            pw.println("\"failure_count\":" + monitor.getFailureCount() + ",");
-            pw.println("\"organization\":\"" + monitor.getOrganization() + "\",");
-            pw.println("\"enabled\":" + monitor.isEnabled() + ",");
-            pw.print("\"incidents\":");
-            pw.println("[");
+            pw.print("{\"id\":" + monitor.getId()+ ",");
+            pw.print("\"name\":\"" + monitor.getName() + "\",");
+            pw.print("\"target_url\":\"" + monitor.getTargetUrl() + "\",");
+            pw.print("\"check_interval\":" + monitor.getCheckInterval() + ",");
+            pw.print("\"created_time\":\"" + new Timestamp(monitor.getCreatedTime()) + "\",");
+            pw.print("\"failure_count\":" + monitor.getFailureCount() + ",");
+            pw.print("\"organization\":\"" + monitor.getOrganization() + "\",");
+            pw.print("\"enabled\":" + monitor.isEnabled() + ",");
+            pw.print("\"incidents\":[");
 
             long created = monitor.getCreatedTime();
             long down = 0;
             if (incidents != null) {
-                for (Incident incident : incidents) {
+                for (int j = 0; j < incidents.size(); j++) {
+                    Incident incident = incidents.get(j);
                     down += incident.getResolvedTime() - incident.getDownTime();
-                    pw.println("\"id\":" + incident.getId() + ",");
-                    pw.println("\"monitor_run_id\":" + incident.getMonitorRunId() + ",");
-                    pw.println("\"down_time\":\"" + new Timestamp(incident.getDownTime()) + "\",");
-                    pw.println("\"resolved_time\":\"" + new Timestamp(incident.getResolvedTime()) + "\",");
-                    pw.println("\"status_code\":" + incident.getStatusCode());
+                    pw.print("{\"id\":" + incident.getId() + ",");
+                    pw.print("\"monitor_run_id\":" + incident.getMonitorRunId() + ",");
+                    pw.print("\"down_time\":\"" + new Timestamp(incident.getDownTime()) + "\",");
+                    pw.print("\"resolved_time\":\"" + new Timestamp(incident.getResolvedTime()) + "\",");
+                    pw.print("\"status_code\":" + incident.getStatusCode() + "}");
+                    if (j < incidents.size() - 1) pw.print(",");
                 }
             }
-            pw.println("],");
+            pw.print("],");
             down = Math.abs(down);
-            long uptime = created - down;
-            pw.println("\"uptime%\":" + ((uptime/created) * 100));
-            if (i == monitors.size() - 1)
-                pw.println("}");
-            else
-                pw.println("},");
+            long total = System.currentTimeMillis() - created;
+            double uptimePct = total > 0 ? ((double)(total - down) / total) * 100.0 : 100.0;
+            pw.print("\"uptime\":" + String.format("%.2f", uptimePct) + "}");
+            if (i < monitors.size() - 1) pw.print(",");
         }
-        pw.print("]");
-        pw.println("}");
+        pw.print("]}");
     }
 }

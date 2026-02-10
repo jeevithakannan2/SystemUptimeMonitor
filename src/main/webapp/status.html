@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status — SystemUptimeMonitor</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-brand"><span>&#9679;</span> UptimeMonitor</div>
+        <div class="nav-links" id="navLinks">
+            <a href="login.html">Sign In</a>
+            <a href="status.html" class="active">Status</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h1>Service Status</h1>
+            <span class="text-sm text-muted" id="lastUpdated"></span>
+        </div>
+        <div id="statusList">
+            <div class="empty-state"><p>Loading status...</p></div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // Update nav based on login state
+        (function() {
+            const session = getSession();
+            if (session) {
+                const nav = document.getElementById('navLinks');
+                let links = '';
+                if (session.role === 'admin' || session.role === 'operator') {
+                    const dashboardPage = session.role === 'admin' ? 'admin.html' : 'dashboard.html';
+                    links += '<a href="' + dashboardPage + '">Dashboard</a>';
+                }
+                links += '<a href="status.html" class="active">Status</a>';
+                links += '<a href="#" onclick="logout()">Logout</a>';
+                nav.innerHTML = links;
+            }
+        })();
+
+        async function loadStatus() {
+            try {
+                const data = await API.getStatus();
+                const monitors = data.monitors || [];
+                renderStatus(monitors);
+                document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+            } catch (err) {
+                document.getElementById('statusList').innerHTML =
+                    '<div class="empty-state"><p>Unable to load status</p></div>';
+            }
+        }
+
+        function renderStatus(monitors) {
+            const el = document.getElementById('statusList');
+            if (!monitors.length) {
+                el.innerHTML = '<div class="empty-state"><p>No monitors configured</p></div>';
+                return;
+            }
+
+            // Group by organization
+            const orgs = {};
+            monitors.forEach(m => {
+                if (!orgs[m.organization]) orgs[m.organization] = [];
+                orgs[m.organization].push(m);
+            });
+
+            let html = '';
+            for (const [org, mons] of Object.entries(orgs)) {
+                html += `<h2 class="mb-16 mt-16" style="font-size:16px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;">${esc(org)}</h2>`;
+                mons.forEach(m => {
+                    const uptime = m.uptime != null ? parseFloat(m.uptime) : 100;
+                    const uptimeClass = uptime >= 99.9 ? 'good' : uptime >= 95 ? 'warn' : 'bad';
+                    const hasActiveIncident = m.incidents && m.incidents.some(i => !i.resolved_time || i.resolved_time === '1970-01-01 00:00:00.0');
+                    const statusClass = !m.enabled ? 'disabled' : hasActiveIncident ? 'down' : 'up';
+                    const statusText = !m.enabled ? 'Disabled' : hasActiveIncident ? 'Down' : 'Operational';
+
+                    html += `<div class="card status-card">
+                        <div class="status-info">
+                            <span class="status-dot ${statusClass}"></span>
+                            <div>
+                                <strong>${esc(m.name)}</strong>
+                                <div class="status-meta">${esc(m.target_url)} &middot; ${statusText}</div>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="uptime-pct ${uptimeClass}">${uptime.toFixed(2)}%</div>
+                            <div class="text-sm text-muted">uptime</div>
+                        </div>
+                    </div>`;
+
+                    // Show recent incidents if any
+                    if (m.incidents && m.incidents.length > 0) {
+                        html += `<div style="margin: -12px 0 16px 0; padding: 0 20px;">`;
+                        const recent = m.incidents.slice(-3);
+                        recent.forEach(inc => {
+                            html += `<div class="text-sm" style="padding:6px 0;border-bottom:1px solid var(--border);color:var(--text-muted);">
+                                HTTP ${inc.status_code} &middot; ${formatTime(inc.down_time)}
+                                ${inc.resolved_time && inc.resolved_time !== '1970-01-01 00:00:00.0' ? ' &middot; Resolved ' + formatTime(inc.resolved_time) : ' &middot; <span style="color:var(--danger)">Unresolved</span>'}
+                            </div>`;
+                        });
+                        html += `</div>`;
+                    }
+                });
+            }
+            el.innerHTML = html;
+        }
+
+        function esc(s) {
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        loadStatus();
+        // Auto-refresh every 30 seconds
+        setInterval(loadStatus, 30000);
+    </script>
+</body>
+</html>

@@ -6,8 +6,11 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class DBManager {
+    private static final Logger LOG = Logger.getLogger(DBManager.class.getName());
     private static final String url;
     private static final String username;
     private static final String password;
@@ -43,6 +46,8 @@ public class DBManager {
         url = props.getProperty("DB_URL");
         username = props.getProperty("DB_USERNAME");
         password = props.getProperty("DB_PASSWORD");
+
+        LOG.info("Database configured: " + url);
 
         // Load PostgreSQL driver
         try {
@@ -90,6 +95,7 @@ public class DBManager {
             + "  down_time TIMESTAMP NOT NULL,"
             + "  resolved_time TIMESTAMP,"
             + "  status_code INTEGER NOT NULL,"
+            + "  expected_status_codes VARCHAR(255),"
             + "  resolved BOOLEAN NOT NULL DEFAULT FALSE,"
             + "  notes TEXT"
             + ");"
@@ -116,6 +122,10 @@ public class DBManager {
         try (Connection connection = getConnection();
              Statement stmt = connection.createStatement()) {
             stmt.execute(ddl);
+
+            try {
+                stmt.execute("ALTER TABLE incidents ADD COLUMN IF NOT EXISTS expected_status_codes VARCHAR(255)");
+            } catch(SQLException ignored) {}
         }
     }
 }

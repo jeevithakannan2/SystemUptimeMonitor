@@ -15,8 +15,11 @@ import org.example.systemuptimemonitor.util.DBManager;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class MonitorService {
+    private static final Logger LOG = Logger.getLogger(MonitorService.class.getName());
     private final static MonitorDao monitorDao = new MonitorDao();
     private final static StatusCodeDao statusCodeDao = new StatusCodeDao();
     private final static MonitorAuditDao monitorAuditDao = new MonitorAuditDao();
@@ -34,8 +37,10 @@ public class MonitorService {
                 monitorAuditDao.createAudit(connection, monitor.getId(), "CREATE");
                 MonitorExecutor.addMonitor(monitor);
                 connection.commit();
+                LOG.info("Monitor created: id=" + monitor.getId() + " name=" + monitor.getName());
             } catch (SQLException e) {
                 connection.rollback();
+                LOG.log(Level.SEVERE, "Transaction failed for createMonitor: " + monitor.getName(), e);
                 throw e;
             } finally {
                 connection.setAutoCommit(true);
@@ -55,8 +60,10 @@ public class MonitorService {
                 monitorAuditDao.createAudit(connection, monitor.getId(), "DELETE");
                 MonitorExecutor.removeMonitor(monitor.getId());
                 connection.commit();
+                LOG.info("Monitor deleted: id=" + monitorId);
             } catch (SQLException e) {
                 connection.rollback();
+                LOG.log(Level.SEVERE, "Transaction failed for deleteMonitor: id=" + monitorId, e);
                 throw e;
             } finally {
                 connection.setAutoCommit(true);
@@ -106,7 +113,17 @@ public class MonitorService {
 
     public ArrayList<Monitor> getAllMonitorsByOrganization(String organization) throws SQLException {
         try (Connection connection = DBManager.getConnection()) {
-            return monitorDao.getAllMonitorsByOrganization(connection, organization);
+            ArrayList<Monitor> monitors = monitorDao.getAllMonitorsByOrganization(connection, organization);
+            for (Monitor monitor: monitors) {
+                monitor.setStatusCodes(statusCodeDao.getStatusCodes(connection, monitor.getId()));
+            }
+            return monitors;
+        }
+    }
+
+    public ArrayList<org.example.systemuptimemonitor.model.MonitorAudit> getMonitorHistory(int monitorId) throws SQLException {
+        try (Connection connection = DBManager.getConnection()) {
+            return monitorAuditDao.getAudits(connection, monitorId);
         }
     }
 
@@ -123,7 +140,7 @@ public class MonitorService {
     public boolean hasUnresolvedIncident(int monitorId) throws SQLException {
         try (Connection connection = DBManager.getConnection()) {
             Incident incident = incidentDao.getLastUnresolvedIncident(connection, monitorId);
-            System.out.println("In service: " + incident + " " + monitorId);
+            LOG.fine("hasUnresolvedIncident check: monitorId=" + monitorId + " result=" + (incident == null));
             return incident == null;
         }
     }

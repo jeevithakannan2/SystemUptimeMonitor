@@ -25,4 +25,22 @@ public class MonitorAuditDao {
             return rs.next();
         }
     }
+
+    public java.util.ArrayList<org.example.systemuptimemonitor.model.MonitorAudit> getAudits(Connection connection, int monitorId) throws SQLException {
+        java.util.ArrayList<org.example.systemuptimemonitor.model.MonitorAudit> audits = new java.util.ArrayList<>();
+        String sql = "SELECT * FROM monitor_audits WHERE monitor_id=? ORDER BY time DESC";
+        try (PreparedStatement pst = connection.prepareStatement(sql)) {
+            pst.setInt(1, monitorId);
+            ResultSet rs = pst.executeQuery();
+            while (rs.next()) {
+                audits.add(new org.example.systemuptimemonitor.model.MonitorAudit(
+                    rs.getInt("id"),
+                    rs.getInt("monitor_id"),
+                    rs.getString("operation"),
+                    rs.getTimestamp("time").getTime()
+                ));
+            }
+        }
+        return audits;
+    }
 }

@@ -3,6 +3,7 @@ package org.example.systemuptimemonitor.servlets;
 import org.example.systemuptimemonitor.exceptions.RoleMissingException;
 import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.UserService;
+import org.example.systemuptimemonitor.util.ErrorResponse;
 import org.mindrot.jbcrypt.BCrypt;
 
 import javax.servlet.annotation.WebServlet;
@@ -11,9 +12,13 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @WebServlet(name = "Register Servlet", value = "/register")
 public class RegisterUser extends HttpServlet {
+    private static final Logger LOG = Logger.getLogger(RegisterUser.class.getName());
+
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String email = req.getParameter("email");
@@ -21,13 +26,13 @@ public class RegisterUser extends HttpServlet {
         String role = req.getParameter("role");
 
         if (email == null || password == null) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "email, password fields req");
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Email and password are required");
             return;
         }
 
         String[] emailSplit = email.split("@");
         if (emailSplit.length != 2) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Not a valid email");
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Not a valid email");
             return;
         }
 
@@ -39,10 +44,13 @@ public class RegisterUser extends HttpServlet {
 
         try {
             userService.createUser(user);
+            LOG.info("User registered: " + email + " (org=" + organization + ")");
         } catch (SQLException e) {
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Cannot create user");
+            LOG.log(Level.SEVERE, "Failed to register user: " + email, e);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Cannot create user");
         } catch (RoleMissingException e) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Role parameter should be either viewer or operator");
+            LOG.warning("Registration failed - invalid role for: " + email);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Role parameter should be either viewer or operator");
         }
     }
 }

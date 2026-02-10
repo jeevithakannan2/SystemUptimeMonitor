@@ -6,15 +6,18 @@ import org.example.systemuptimemonitor.util.DBManager;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 
 public class IncidentDao {
+    private static final Logger LOG = Logger.getLogger(IncidentDao.class.getName());
 
     public void createIncident(Connection connection, Incident incident) throws SQLException {
-        String sql = "INSERT INTO incidents (monitor_run_id, down_time, status_code) VALUES (?,?,?)";
+        String sql = "INSERT INTO incidents (monitor_run_id, down_time, status_code, expected_status_codes) VALUES (?,?,?,?)";
         try(PreparedStatement pst = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);) {
             pst.setInt(1, incident.getMonitorRunId());
             pst.setTimestamp(2, new Timestamp(incident.getDownTime()));
             pst.setInt(3, incident.getStatusCode());
+            pst.setString(4, incident.getExpectedStatusCodes());
             pst.executeUpdate();
             ResultSet generatedId = pst.getGeneratedKeys();
             if(generatedId.next()) incident.setId(generatedId.getInt(1));
@@ -32,7 +35,7 @@ public class IncidentDao {
                 long time = 0;
                 if (ts != null)
                     time = ts.getTime();
-                incidents.add(new Incident(rs.getInt("id"), rs.getInt("monitor_run_id"), rs.getTimestamp("down_time").getTime(), time, rs.getInt("status_code"), rs.getBoolean("resolved")));
+                incidents.add(new Incident(rs.getInt("id"), monitorId, rs.getInt("monitor_run_id"), rs.getTimestamp("down_time").getTime(), time, rs.getInt("status_code"), rs.getBoolean("resolved"), rs.getString("expected_status_codes")));
 
             }
         }
@@ -41,7 +44,7 @@ public class IncidentDao {
 
     public ArrayList<Incident> getIncidentsByOrganization(Connection connection, String organization) throws SQLException {
         ArrayList<Incident> incidents = new ArrayList<>();
-        String sql = "SELECT i.* FROM incidents i JOIN monitor_runs mr ON mr.id=i.monitor_run_id JOIN monitors m ON m.id=mr.monitor_id WHERE organization=?";
+        String sql = "SELECT i.*, mr.monitor_id FROM incidents i JOIN monitor_runs mr ON mr.id=i.monitor_run_id JOIN monitors m ON m.id=mr.monitor_id WHERE organization=?";
         try (PreparedStatement pst = connection.prepareStatement(sql);) {
             pst.setString(1, organization);
             ResultSet rs = pst.executeQuery();
@@ -50,7 +53,7 @@ public class IncidentDao {
                 long time = 0;
                 if (ts != null)
                     time = ts.getTime();
-                incidents.add(new Incident(rs.getInt("id"), rs.getInt("monitor_run_id"), rs.getTimestamp("down_time").getTime(), time, rs.getInt("status_code"), rs.getBoolean("resolved")));
+                incidents.add(new Incident(rs.getInt("id"), rs.getInt("monitor_id"), rs.getInt("monitor_run_id"), rs.getTimestamp("down_time").getTime(), time, rs.getInt("status_code"), rs.getBoolean("resolved"), rs.getString("expected_status_codes")));
             }
             rs.close();
         }
@@ -74,7 +77,7 @@ public class IncidentDao {
             ResultSet rs = pst.executeQuery();
             if (rs.next()) {
                 Incident incident = new Incident(rs.getInt("id"), rs.getInt("monitor_run_id"), rs.getTimestamp("down_time").getTime(), 0L, rs.getInt("status_code"), rs.getBoolean("resolved"));
-                System.out.println("In dao: " + incident);
+                LOG.fine("Found unresolved incident: " + incident);
                 return incident;
             }
         }

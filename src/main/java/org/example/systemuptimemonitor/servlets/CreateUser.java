@@ -8,6 +8,8 @@ import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.UserService;
 import org.mindrot.jbcrypt.BCrypt;
 
+import org.example.systemuptimemonitor.util.ErrorResponse;
+
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -15,9 +17,13 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @WebServlet("/create")
 public class CreateUser extends HttpServlet {
+    private static final Logger LOG = Logger.getLogger(CreateUser.class.getName());
+
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String code = req.getParameter("code");
@@ -25,13 +31,13 @@ public class CreateUser extends HttpServlet {
         String password = req.getParameter("password");
 
         if (code == null || code.isEmpty()) {
-            resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Invite code is required");
             return;
         }
 
         String[] emailSplit = email.split("@");
         if (emailSplit.length != 2) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Not a valid email");
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Not a valid email");
             return;
         }
 
@@ -40,11 +46,11 @@ public class CreateUser extends HttpServlet {
         try {
             inviteLink = new InviteLinkDao().getInviteLink(code);
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.log(Level.SEVERE, "Failed to look up invite link: " + code, e);
         }
 
         if (inviteLink == null) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invite link expired");
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Invite link expired");
             return;
         }
 
@@ -55,13 +61,16 @@ public class CreateUser extends HttpServlet {
 
         try {
             userService.createUserFromLink(user, inviteLink);
+            LOG.info("User created via invite link: " + email + " (role=" + inviteLink.getRole() + ")");
         } catch (SQLException e) {
-            e.printStackTrace();
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            LOG.log(Level.SEVERE, "Failed to create user from invite link: " + email, e);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Server error");
         } catch (InviteLinkExpiredException e) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invite link expired");
+            LOG.warning("Invite link expired for user: " + email);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Invite link expired");
         } catch (UserAlreadyExistsException e) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "User already exists");
+            LOG.warning("User already exists: " + email);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "User already exists");
         }
     }
 }

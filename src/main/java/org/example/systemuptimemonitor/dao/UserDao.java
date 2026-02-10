@@ -6,8 +6,11 @@ import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.util.DBManager;
 
 import java.sql.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class UserDao {
+    private static final Logger LOG = Logger.getLogger(UserDao.class.getName());
 
     public void createUser(Connection connection, User user) throws SQLException {
         String sql = "INSERT INTO users(email, password, role, organization) VALUES(?,?,?,?)";
@@ -42,7 +45,7 @@ public class UserDao {
                 return new User(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5));
             } else throw new MissingUserException();
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.log(Level.SEVERE, "Database error looking up user: " + email, e);
         }
         return null;
     }

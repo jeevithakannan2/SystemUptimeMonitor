@@ -2,11 +2,13 @@ package org.example.systemuptimemonitor.model;
 
 public class Incident {
     private int id;
+    private int monitorId;
     private int monitorRunId;
     private long downTime;
     private long resolvedTime;
     private int statusCode;
     private String notes;
+    private String expectedStatusCodes;
 
     public boolean isResolved() {
         return resolved;
@@ -30,6 +32,17 @@ public class Incident {
                 '}';
     }
 
+    public Incident(int id, int monitorId, int monitorRunId, long downTime, long resolvedTime, int statusCode, boolean resolved, String expectedStatusCodes) {
+        this.id = id;
+        this.monitorId = monitorId;
+        this.monitorRunId = monitorRunId;
+        this.downTime = downTime;
+        this.resolvedTime = resolvedTime;
+        this.statusCode = statusCode;
+        this.resolved = resolved;
+        this.expectedStatusCodes = expectedStatusCodes;
+    }
+
     public Incident(int id, int monitorRunId, long downTime, long resolvedTime, int statusCode, boolean resolved) {
         this.id = id;
         this.monitorRunId = monitorRunId;
@@ -38,10 +51,25 @@ public class Incident {
         this.statusCode = statusCode;
         this.resolved = resolved;
     }
-
-    public Incident(int monitorRunId, long downTime, int statusCode) {
-        this.monitorRunId = monitorRunId;
+    public Incident(int monitorId, long downTime, int statusCode, String expectedStatusCodes) {
+        this.monitorId = monitorId;
         this.downTime = downTime;
+        this.statusCode = statusCode;
+        this.expectedStatusCodes = expectedStatusCodes;
+    }
+
+    public Incident(int monitorId, long downTime, int statusCode) {
+        this.monitorId = monitorId;
+        this.downTime = downTime;
+        this.statusCode = statusCode;
+    }
+
+    public String getExpectedStatusCodes() {
+        return expectedStatusCodes;
+    }
+
+    public void setExpectedStatusCodes(String expectedStatusCodes) {
+        this.expectedStatusCodes = expectedStatusCodes;
         this.statusCode = statusCode;
     }
 
@@ -51,6 +79,14 @@ public class Incident {
 
     public void setId(int id) {
         this.id = id;
+    }
+
+    public int getMonitorId() {
+        return monitorId;
+    }
+
+    public void setMonitorId(int monitorId) {
+        this.monitorId = monitorId;
     }
 
     public int getMonitorRunId() {

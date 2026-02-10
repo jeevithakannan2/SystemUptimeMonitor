@@ -3,6 +3,7 @@ package org.example.systemuptimemonitor.servlets;
 import org.example.systemuptimemonitor.dao.UserDao;
 import org.example.systemuptimemonitor.exceptions.MissingUserException;
 import org.example.systemuptimemonitor.model.User;
+import org.example.systemuptimemonitor.util.ErrorResponse;
 import org.example.systemuptimemonitor.util.TokenManager;
 import org.mindrot.jbcrypt.BCrypt;
 
@@ -13,9 +14,13 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @WebServlet("/login")
 public class Login extends HttpServlet {
+    private static final Logger LOG = Logger.getLogger(Login.class.getName());
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String email = req.getParameter("email");
@@ -26,12 +31,14 @@ public class Login extends HttpServlet {
         try {
             user = userDao.getUserByEmail(email);
         } catch (MissingUserException e) {
-            resp.sendError(HttpServletResponse.SC_FORBIDDEN);
+            LOG.warning("Login failed - user not found: " + email);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "User not found");
             return;
         }
 
         if (!BCrypt.checkpw(password, user.getPassword())) {
-            resp.sendError(HttpServletResponse.SC_FORBIDDEN, "Wrong password");
+            LOG.warning("Login failed - wrong password for: " + email);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Wrong password");
             return;
         }
 
@@ -41,5 +48,10 @@ public class Login extends HttpServlet {
         tokenCookie.setSecure(true);
         tokenCookie.setMaxAge(3600);
         resp.addCookie(tokenCookie);
+
+        LOG.info("User logged in: " + email + " (role=" + user.getRole() + ")");
+
+        resp.setContentType("application/json");
+        resp.getWriter().print("{\"role\":\"" + user.getRole() + "\",\"email\":\"" + user.getEmail() + "\",\"organization\":\"" + user.getOrganization() + "\"}");
     }
 }

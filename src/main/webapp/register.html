@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register — SystemUptimeMonitor</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <h1>Create Organization</h1>
+            <p>The first user becomes the admin for your organization (derived from email domain).</p>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="email">Work Email</label>
+                    <input type="email" id="email" placeholder="you@company.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Choose a password" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block" id="regBtn">Create Account</button>
+            </form>
+            <p class="mt-16 text-center text-sm">
+                Already have an account? <a href="login.html">Sign in</a>
+            </p>
+            <p class="text-center text-sm">
+                Have an invite link? <a href="invite.html">Join with invite</a>
+            </p>
+        </div>
+    </div>
+    <script src="js/app.js"></script>
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('regBtn');
+            btn.disabled = true;
+            try {
+                await API.register(
+                    document.getElementById('email').value,
+                    document.getElementById('password').value
+                );
+                showToast('Account created! You can now sign in.');
+                setTimeout(() => window.location.href = 'login.html', 1500);
+            } catch (err) {
+                showToast('Registration failed: ' + err.message, 'error');
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

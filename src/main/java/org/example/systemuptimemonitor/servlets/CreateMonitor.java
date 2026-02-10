@@ -4,6 +4,7 @@ import org.example.systemuptimemonitor.exceptions.MonitorAlreadyExistsException;
 import org.example.systemuptimemonitor.model.Monitor;
 import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.MonitorService;
+import org.example.systemuptimemonitor.util.ErrorResponse;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -13,9 +14,13 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @WebServlet("/create_monitor")
 public class CreateMonitor extends HttpServlet {
+    private static final Logger LOG = Logger.getLogger(CreateMonitor.class.getName());
+
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         User user = (User) req.getSession().getAttribute("user");
@@ -27,7 +32,7 @@ public class CreateMonitor extends HttpServlet {
         String failureCount = req.getParameter("failure_count");
 
         if (name == null || name.isEmpty() || targetUrl == null || targetUrl.isEmpty() || expected_status_codes == null || expected_status_codes.isEmpty() || check_interval == null || check_interval.isEmpty() || enabled == null || enabled.isEmpty()) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "All fields are required");
             return;
         }
 
@@ -50,11 +55,13 @@ public class CreateMonitor extends HttpServlet {
         MonitorService monitorService = new MonitorService();
         try {
             monitorService.createMonitor(monitor);
+            LOG.info("Monitor created: " + name + " (" + targetUrl + ") by user " + user.getEmail());
         } catch (SQLException e) {
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            e.printStackTrace();
+            LOG.log(Level.SEVERE, "Failed to create monitor: " + name, e);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Server error");
         } catch (MonitorAlreadyExistsException e) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Monitor target URL already exists");
+            LOG.warning("Monitor already exists: " + targetUrl);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Monitor target URL already exists");
         }
     }
 }

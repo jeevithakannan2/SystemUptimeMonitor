@@ -4,19 +4,23 @@ import org.example.systemuptimemonitor.model.User;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 
 public class TokenManager {
+    private static final Logger LOG = Logger.getLogger(TokenManager.class.getName());
     private static final ConcurrentHashMap<String, User> tokens = new ConcurrentHashMap<>();
 
     public static String createToken(User user) {
         String token = UUID.randomUUID().toString();
         user.setLoggedIn(System.currentTimeMillis());
         tokens.putIfAbsent(token, user);
+        LOG.fine("Token created for user: " + user.getEmail());
         return token;
     }
 
     public static void removeToken(String token) {
         tokens.remove(token);
+        LOG.fine("Token removed");
     }
 
     public static boolean isValid(String token) {

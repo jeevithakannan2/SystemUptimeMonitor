@@ -13,8 +13,11 @@ import org.example.systemuptimemonitor.util.DBManager;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class IncidentService {
+    private static final Logger LOG = Logger.getLogger(IncidentService.class.getName());
     private final static IncidentDao incidentDao = new IncidentDao();
     private final static MonitorRunDao monitorRunDao = new MonitorRunDao();
 
@@ -30,16 +33,18 @@ public class IncidentService {
         }
     }
 
-    public void createIncident(MonitorRun monitorRun) throws SQLException {
+    public void createIncident(MonitorRun monitorRun, String expectedStatusCodes) throws SQLException {
         try (Connection connection = DBManager.getConnection()) {
             try {
                 connection.setAutoCommit(false);
                 monitorRunDao.createMonitorRun(connection, monitorRun);
-                Incident incident = new Incident(monitorRun.getMonitor_id(), monitorRun.getTime(), monitorRun.getStatus_code());
+                Incident incident = new Incident(monitorRun.getMonitor_id(), monitorRun.getTime(), monitorRun.getStatus_code(), expectedStatusCodes);
                 incidentDao.createIncident(connection, incident);
                 connection.commit();
+                LOG.info("Incident created for monitor_run_id=" + monitorRun.getId() + " monitor_id=" + monitorRun.getMonitor_id() + " status_code=" + monitorRun.getStatus_code());
             } catch (SQLException e) {
                 connection.rollback();
+                LOG.log(Level.SEVERE, "Transaction failed for createIncident", e);
             } finally {
                 connection.setAutoCommit(true);
             }
@@ -53,6 +58,7 @@ public class IncidentService {
                 incident.setResolvedTime(resolvedTime);
                 incident.setResolved(true);
                 incidentDao.updateIncident(incident);
+                LOG.info("Auto-resolved incident id=" + incident.getId() + " for monitor_id=" + monitorId);
             }
         }
     }
@@ -67,6 +73,7 @@ public class IncidentService {
                 throw new IncidentAlreadyResolvedException();
             }
             incidentDao.resolveIncident(connection, incidentId, notes);
+            LOG.info("Incident resolved: id=" + incidentId);
         }
     }
 }

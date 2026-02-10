@@ -12,8 +12,11 @@ import org.example.systemuptimemonitor.util.DBManager;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class UserService {
+    private static final Logger LOG = Logger.getLogger(UserService.class.getName());
     private final static UserDao userDao = new UserDao();
     private final static InviteLinkDao inviteLinkDao = new InviteLinkDao();
 
@@ -31,8 +34,10 @@ public class UserService {
                 }
                 userDao.createUser(connection, user);
                 connection.commit();
+                LOG.info("User created: " + user.getEmail() + " role=" + user.getRole() + " org=" + user.getOrganization());
             } catch (SQLException e) {
                 connection.rollback();
+                LOG.log(Level.SEVERE, "Transaction failed for createUser: " + user.getEmail(), e);
                 throw e;
             } finally {
                 connection.setAutoCommit(true);
@@ -56,8 +61,10 @@ public class UserService {
                 }
                 userDao.createUser(connection, user);
                 inviteLinkDao.expireInviteLink(connection, inviteLink.getUrl());
+                LOG.info("User created from invite: " + user.getEmail() + " role=" + user.getRole());
             } catch (SQLException e) {
                 connection.rollback();
+                LOG.log(Level.SEVERE, "Transaction failed for createUserFromLink: " + user.getEmail(), e);
                 throw e;
             } finally {
                 connection.setAutoCommit(true);

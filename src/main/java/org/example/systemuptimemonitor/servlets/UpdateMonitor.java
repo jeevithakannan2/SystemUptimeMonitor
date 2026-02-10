@@ -4,6 +4,8 @@ import org.example.systemuptimemonitor.exceptions.MissingMonitorException;
 import org.example.systemuptimemonitor.model.Monitor;
 import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.MonitorService;
+import org.example.systemuptimemonitor.util.ErrorResponse;
+import org.example.systemuptimemonitor.util.RequestBodyParser;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -13,21 +15,27 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @WebServlet("/update_monitor")
 public class UpdateMonitor extends HttpServlet {
+    private static final Logger LOG = Logger.getLogger(UpdateMonitor.class.getName());
+
     @Override
     protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String monitorIdStr = req.getParameter("monitor_id");
-        String name = req.getParameter("name");
-        String targetUrl = req.getParameter("target_url");
-        String expected_status_codes= req.getParameter("expected_status_codes");
-        String check_interval = req.getParameter("check_interval");
-        String enabled = req.getParameter("enabled");
-        String failureCount = req.getParameter("failure_count");
+        Map<String, String> params = RequestBodyParser.parse(req);
+        String monitorIdStr = params.get("monitor_id");
+        String name = params.get("name");
+        String targetUrl = params.get("target_url");
+        String expected_status_codes = params.get("expected_status_codes");
+        String check_interval = params.get("check_interval");
+        String enabled = params.get("enabled");
+        String failureCount = params.get("failure_count");
 
         if (monitorIdStr == null || monitorIdStr.isEmpty()) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "monitor_id must be a valid number");
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "monitor_id must be a valid number");
             return;
         }
 
@@ -47,13 +55,16 @@ public class UpdateMonitor extends HttpServlet {
             if(enabled != null && !enabled.isEmpty()) monitor.setEnabled(Boolean.parseBoolean(enabled));
             if(failureCount != null && !failureCount.isEmpty()) monitor.setFailureCount(Integer.parseInt(failureCount));
             monitorService.updateMonitor(monitor);
+            LOG.info("Monitor updated: id=" + monitorId);
         } catch (SQLException e) {
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            e.printStackTrace();
+            LOG.log(Level.SEVERE, "Failed to update monitor: " + monitorIdStr, e);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Server error");
         } catch (MissingMonitorException e) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Monitor target URL not found");
+            LOG.warning("Monitor not found for update: " + monitorIdStr);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Monitor target URL not found");
         } catch (NumberFormatException e) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Not a valid number");
+            LOG.warning("Invalid number in update monitor request: " + monitorIdStr);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Not a valid number");
         }
     }
 }
