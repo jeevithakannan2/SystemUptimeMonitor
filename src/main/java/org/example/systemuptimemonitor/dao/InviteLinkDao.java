@@ -3,12 +3,11 @@ package org.example.systemuptimemonitor.dao;
 import org.example.systemuptimemonitor.exceptions.InviteLinkExpiredException;
 import org.example.systemuptimemonitor.model.InviteLink;
 
+import org.example.systemuptimemonitor.util.DBManager;
+
 import java.sql.*;
 
 public class InviteLinkDao {
-    private final static String url = "jdbc:mysql://localhost:3306/sysuptimemonitor";
-    private final static String username = "jeevi-si3005";
-    private final static String password = "Jeeva@200504";
 
     public void createLink(Connection connection, InviteLink inviteLink) throws SQLException {
         String sql = "INSERT INTO invites (created_by, created_time, expired, url, role) VALUES (?,?,?,?,?)";
@@ -24,7 +23,7 @@ public class InviteLinkDao {
 
     public InviteLink getInviteLink(String code) throws SQLException {
         String sql = "SELECT * FROM invites where url=?";
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+        try (Connection connection = DBManager.getConnection()) {
             PreparedStatement pst = connection.prepareStatement(sql);
             pst.setString(1, code);
             ResultSet rs = pst.executeQuery();

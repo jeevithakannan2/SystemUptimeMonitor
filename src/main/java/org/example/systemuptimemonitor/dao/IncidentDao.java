@@ -2,13 +2,12 @@ package org.example.systemuptimemonitor.dao;
 
 import org.example.systemuptimemonitor.model.Incident;
 
+import org.example.systemuptimemonitor.util.DBManager;
+
 import java.sql.*;
 import java.util.ArrayList;
 
 public class IncidentDao {
-    private final static String url = "jdbc:mysql://localhost:3306/sysuptimemonitor";
-    private final static String username = "jeevi-si3005";
-    private final static String password = "Jeeva@200504";
 
     public void createIncident(Connection connection, Incident incident) throws SQLException {
         String sql = "INSERT INTO incidents (monitor_run_id, down_time, status_code) VALUES (?,?,?)";
@@ -60,7 +59,7 @@ public class IncidentDao {
 
     public void updateIncident(Incident incident) throws SQLException {
         String sql = "UPDATE incidents SET resolved=? resolved_time=? WHERE id=?";
-        try(Connection connection = DriverManager.getConnection(url, username, password)) {
+        try(Connection connection = DBManager.getConnection()) {
             PreparedStatement pst = connection.prepareStatement(sql);
             pst.setBoolean(1, incident.isResolved());
             pst.setTimestamp(2, new Timestamp(incident.getResolvedTime()));

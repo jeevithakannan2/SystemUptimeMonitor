@@ -10,22 +10,20 @@ import org.example.systemuptimemonitor.model.Incident;
 import org.example.systemuptimemonitor.model.Monitor;
 import org.example.systemuptimemonitor.util.MonitorExecutor;
 
+import org.example.systemuptimemonitor.util.DBManager;
+
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
 public class MonitorService {
-    private final static String url = "jdbc:mysql://localhost:3306/sysuptimemonitor";
-    private final static String username = "jeevi-si3005";
-    private final static String password = "Jeeva@200504";
     private final static MonitorDao monitorDao = new MonitorDao();
     private final static StatusCodeDao statusCodeDao = new StatusCodeDao();
     private final static MonitorAuditDao monitorAuditDao = new MonitorAuditDao();
     private final static IncidentDao incidentDao = new IncidentDao();
 
     public void createMonitor(Monitor monitor) throws SQLException, MonitorAlreadyExistsException {
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+        try (Connection connection = DBManager.getConnection()) {
             try {
                 connection.setAutoCommit(false);
                 if (monitorDao.getMonitorByURLAndOrg(connection, monitor.getTargetUrl(), monitor.getOrganization()) != null) {
@@ -47,7 +45,7 @@ public class MonitorService {
     }
 
     public void deleteMonitor(int monitorId) throws SQLException, MissingMonitorException {
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+        try (Connection connection = DBManager.getConnection()) {
             try {
                 connection.setAutoCommit(false);
                 Monitor monitor = monitorDao.getMonitorById(connection, monitorId);
@@ -67,7 +65,7 @@ public class MonitorService {
     }
 
     public void updateMonitor(Monitor monitor) throws SQLException {
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+        try (Connection connection = DBManager.getConnection()) {
             try {
                 connection.setAutoCommit(false);
                 monitorDao.updateMonitor(connection, monitor);
@@ -88,7 +86,7 @@ public class MonitorService {
 
     public Monitor getMonitor(int monitorId) throws SQLException, MissingMonitorException {
         Monitor monitor = null;
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+        try (Connection connection = DBManager.getConnection()) {
             try {
                 connection.setAutoCommit(false);
                 monitor = monitorDao.getMonitorById(connection, monitorId);
@@ -107,13 +105,13 @@ public class MonitorService {
     }
 
     public ArrayList<Monitor> getAllMonitorsByOrganization(String organization) throws SQLException {
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+        try (Connection connection = DBManager.getConnection()) {
             return monitorDao.getAllMonitorsByOrganization(connection, organization);
         }
     }
 
     public ArrayList<Monitor> getAllMonitors() throws SQLException {
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+        try (Connection connection = DBManager.getConnection()) {
             ArrayList<Monitor> monitors = monitorDao.getAllMonitors(connection);
             for (Monitor monitor: monitors) {
                 monitor.setStatusCodes(statusCodeDao.getStatusCodes(connection, monitor.getId()));
@@ -123,7 +121,7 @@ public class MonitorService {
     }
 
     public boolean hasUnresolvedIncident(int monitorId) throws SQLException {
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+        try (Connection connection = DBManager.getConnection()) {
             Incident incident = incidentDao.getLastUnresolvedIncident(connection, monitorId);
             System.out.println("In service: " + incident + " " + monitorId);
             return incident == null;

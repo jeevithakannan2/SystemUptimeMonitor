@@ -8,19 +8,17 @@ import org.example.systemuptimemonitor.exceptions.UserAlreadyExistsException;
 import org.example.systemuptimemonitor.model.InviteLink;
 import org.example.systemuptimemonitor.model.User;
 
+import org.example.systemuptimemonitor.util.DBManager;
+
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class UserService {
-    private final static String url = "jdbc:mysql://localhost:3306/sysuptimemonitor";
-    private final static String username = "jeevi-si3005";
-    private final static String password = "Jeeva@200504";
     private final static UserDao userDao = new UserDao();
     private final static InviteLinkDao inviteLinkDao = new InviteLinkDao();
 
     public void createUser(User user) throws SQLException, RoleMissingException {
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+        try (Connection connection = DBManager.getConnection()) {
             try {
                 connection.setAutoCommit(false);
                 String role = user.getRole();
@@ -43,7 +41,7 @@ public class UserService {
     }
 
     public void createUserFromLink(User user, InviteLink inviteLink) throws SQLException, InviteLinkExpiredException, UserAlreadyExistsException {
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+        try (Connection connection = DBManager.getConnection()) {
             try {
                 connection.setAutoCommit(false);
                 if (inviteLink.isExpired()) {
@@ -68,7 +66,7 @@ public class UserService {
     }
 
     public void deleteUser(String email) throws SQLException {
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+        try (Connection connection = DBManager.getConnection()) {
             userDao.deleteUser(connection, email);
         }
     }

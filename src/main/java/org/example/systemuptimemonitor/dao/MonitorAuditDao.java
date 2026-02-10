@@ -1,11 +1,10 @@
 package org.example.systemuptimemonitor.dao;
 
+import org.example.systemuptimemonitor.util.DBManager;
+
 import java.sql.*;
 
 public class MonitorAuditDao {
-    private final static String url = "jdbc:mysql://localhost:3306/sysuptimemonitor";
-    private final static String username = "jeevi-si3005";
-    private final static String password = "Jeeva@200504";
 
     public void createAudit(Connection connection, int monitorId, String operation) throws SQLException {
         String sql = "INSERT INTO monitor_audits (monitor_id, operation, time) VALUES (?,?,?)";
@@ -19,7 +18,7 @@ public class MonitorAuditDao {
 
     public boolean inAudit(int monitorId) throws SQLException {
         String sql = "SELECT * FROM monitor_audits WHERE id=? AND operation != CREATED";
-        try(Connection connection = DriverManager.getConnection(url , username, password)) {
+        try(Connection connection = DBManager.getConnection()) {
             PreparedStatement pst = connection.prepareStatement(sql);
             pst.setInt(1, monitorId);
             ResultSet rs = pst.executeQuery();

@@ -3,12 +3,11 @@ package org.example.systemuptimemonitor.dao;
 import org.example.systemuptimemonitor.exceptions.MissingUserException;
 import org.example.systemuptimemonitor.model.User;
 
+import org.example.systemuptimemonitor.util.DBManager;
+
 import java.sql.*;
 
 public class UserDao {
-    private final static String url = "jdbc:mysql://localhost:3306/sysuptimemonitor";
-    private final static String username = "jeevi-si3005";
-    private final static String password = "Jeeva@200504";
 
     public void createUser(Connection connection, User user) throws SQLException {
         String sql = "INSERT INTO users(email, password, role, organization) VALUES(?,?,?,?)";
@@ -34,7 +33,7 @@ public class UserDao {
     }
 
     public User getUserByEmail(String email) throws MissingUserException {
-        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+        try (Connection connection = DBManager.getConnection()) {
             String sql = "SELECT * FROM users WHERE email=?";
             PreparedStatement pst = connection.prepareStatement(sql);
             pst.setString(1, email);

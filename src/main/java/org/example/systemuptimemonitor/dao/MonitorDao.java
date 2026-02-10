@@ -7,9 +7,6 @@ import java.util.ArrayList;
 import java.util.MissingResourceException;
 
 public class MonitorDao {
-    private final static String url = "jdbc:mysql://localhost:3306/sysuptimemonitor";
-    private final static String username = "jeevi-si3005";
-    private final static String password = "Jeeva@200504";
 
     public void createMonitor(Connection connection, Monitor monitor) throws SQLException {
         String sql = "INSERT INTO monitors(name, target_url, check_interval, created_time, created_by, failure_count, organization, enabled) VALUES(?,?,?,?,?,?,?,?)";

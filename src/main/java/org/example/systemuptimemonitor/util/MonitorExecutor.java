@@ -39,6 +39,12 @@ public class MonitorExecutor implements ServletContextListener {
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
+        try {
+            DBManager.initSchema();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to initialize database schema", e);
+        }
+
         MonitorService monitorService = new MonitorService();
         try {
             ArrayList<Monitor> monitors1 = monitorService.getAllMonitors();
