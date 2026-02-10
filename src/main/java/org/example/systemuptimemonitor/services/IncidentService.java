@@ -37,7 +37,7 @@ public class IncidentService {
             try {
                 connection.setAutoCommit(false);
                 monitorRunDao.createMonitorRun(connection, monitorRun);
-                Incident incident = new Incident(monitorRun.getMonitor_id(), monitorRun.getTime(), monitorRun.getStatus_code(), expectedStatusCodes);
+                Incident incident = new Incident(monitorRun.getId(), monitorRun.getMonitor_id(), monitorRun.getTime(), monitorRun.getStatus_code(), expectedStatusCodes);
                 incidentDao.createIncident(connection, incident);
                 connection.commit();
                 LOG.info("Incident created for monitor_run_id=" + monitorRun.getId() + " monitor_id=" + monitorRun.getMonitor_id() + " status_code=" + monitorRun.getStatus_code());

@@ -31,17 +31,12 @@ public class Incident {
         this.resolved = resolved;
     }
 
-    public Incident(int monitorId, long downTime, int statusCode, String expectedStatusCodes) {
+    public Incident(int monitorRunId, int monitorId, long downTime, int statusCode, String expectedStatusCodes) {
+        this.monitorRunId = monitorRunId;
         this.monitorId = monitorId;
         this.downTime = downTime;
         this.statusCode = statusCode;
         this.expectedStatusCodes = expectedStatusCodes;
-    }
-
-    public Incident(int monitorId, long downTime, int statusCode) {
-        this.monitorId = monitorId;
-        this.downTime = downTime;
-        this.statusCode = statusCode;
     }
 
     public boolean isResolved() {

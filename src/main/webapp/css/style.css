@@ -173,12 +173,18 @@ a:hover { text-decoration: underline; }
 .page-header h1 { font-size: 24px; }
 
 /* ── Table ── */
-.table-wrap { overflow-x: auto; }
-table {
+.table-wrap {
     width: 100%;
+    overflow-x: auto;
+}
+
+.table-wrap table {
+    width: max-content;   /* 👈 allows table to expand */
+    min-width: 100%;      /* still fills container if small */
     border-collapse: collapse;
     font-size: 14px;
 }
+
 thead { border-bottom: 1px solid var(--border); }
 th {
     text-align: left;

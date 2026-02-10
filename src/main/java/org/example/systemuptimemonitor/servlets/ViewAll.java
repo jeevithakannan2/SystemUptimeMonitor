@@ -63,7 +63,8 @@ public class ViewAll extends HttpServlet {
             if (incidents != null) {
                 for (int j = 0; j < incidents.size(); j++) {
                     Incident incident = incidents.get(j);
-                    down += incident.getResolvedTime() - incident.getDownTime();
+                    long endTime = incident.isResolved() ? incident.getResolvedTime() : System.currentTimeMillis();
+                    down += endTime - incident.getDownTime();
                     pw.print("{\"id\":" + incident.getId() + ",");
                     pw.print("\"monitor_run_id\":" + incident.getMonitorRunId() + ",");
                     pw.print("\"down_time\":\"" + new Timestamp(incident.getDownTime()) + "\",");
@@ -73,7 +74,6 @@ public class ViewAll extends HttpServlet {
                 }
             }
             pw.print("],");
-            down = Math.abs(down);
             long total = System.currentTimeMillis() - created;
             double uptimePct = total > 0 ? ((double) (total - down) / total) * 100.0 : 100.0;
             pw.print("\"uptime\":" + String.format("%.2f", uptimePct) + "}");

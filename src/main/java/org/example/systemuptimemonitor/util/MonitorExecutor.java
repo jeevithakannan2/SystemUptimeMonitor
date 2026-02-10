@@ -110,52 +110,70 @@ public class MonitorExecutor implements ServletContextListener {
 
         @Override
         public void run() {
+            long startTime = System.currentTimeMillis();
+            MonitorRun monitorRun = new MonitorRun(monitorMap.monitor.getId(), startTime);
+
             try {
                 if (!monitorService.hasUnresolvedIncident(monitorMap.monitor.getId())) return;
 
                 URL url = new URL(monitorMap.monitor.getTargetUrl());
 
-                long startTime = System.currentTimeMillis();
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 connection.setRequestMethod("GET");
                 connection.setConnectTimeout(5000);
                 int statusCode = connection.getResponseCode();
                 long endTime = System.currentTimeMillis();
 
-                MonitorRun monitorRun = new MonitorRun(monitorMap.monitor.getId(), startTime, (int) (endTime - startTime), statusCode);
-                if (monitorMap.monitor.isExpectedStatusCode(statusCode)) {
-                    monitorRun.setSuccess(true);
-                    monitorMap.failCount.set(monitorMap.monitor.getFailureCount());
-                    monitorRunService.createMonitorRun(monitorRun);
-                    incidentService.resolveLastIncident(monitorMap.monitor.getId(), startTime);
-                    LOG.fine("Monitor id=" + monitorMap.monitor.getId() + " check OK: status=" + statusCode + " responseTime=" + (endTime - startTime) + "ms");
-                } else {
-                    monitorRun.setSuccess(false);
-                    monitorRunService.createMonitorRun(monitorRun);
+                monitorRun.setResponse_time((int) (endTime - startTime));
+                monitorRun.setStatus_code(statusCode);
 
-                    int currentFailures = monitorMap.failCount.get();
-                    if (currentFailures > 0) {
-                        currentFailures = monitorMap.failCount.decrementAndGet();
-                    }
+                if (!monitorMap.monitor.isExpectedStatusCode(statusCode)) {
+                    handleFailure(monitorRun, statusCode);
+                    return;
+                }
 
-                    LOG.warning("Monitor id=" + monitorMap.monitor.getId() + " unexpected status: " + statusCode + " (remaining failures: " + currentFailures + ")");
+                monitorRun.setSuccess(true);
+                monitorMap.failCount.set(monitorMap.monitor.getFailureCount());
+                monitorRunService.createMonitorRun(monitorRun);
+                incidentService.resolveLastIncident(monitorMap.monitor.getId(), startTime);
+                LOG.fine("Monitor id=" + monitorMap.monitor.getId() + " check OK: status=" + statusCode + " responseTime=" + (endTime - startTime) + "ms");
 
-                    if (currentFailures == 0) {
-                        LOG.severe("Monitor id=" + monitorMap.monitor.getId() + " failure threshold reached - creating incident");
-                        StringBuilder sb = new StringBuilder();
-                        ArrayList<Integer> codes = monitorMap.monitor.getStatusCodes();
-                        if (codes != null) {
-                            for (int i = 0; i < codes.size(); i++) {
-                                sb.append(codes.get(i));
-                                if (i < codes.size() - 1) sb.append(", ");
-                            }
-                        }
-                        incidentService.createIncident(monitorRun, sb.toString());
-                        monitorMap.failCount.set(monitorMap.monitor.getFailureCount());
+            } catch (IOException e) {
+                LOG.log(Level.WARNING, "Monitor check failed for id=" + monitorMap.monitor.getId() + " url=" + monitorMap.monitor.getTargetUrl());
+                monitorRun = new MonitorRun(monitorMap.monitor.getId(), startTime, 0, 0);
+                try {
+                    handleFailure(monitorRun, 0);
+                } catch (SQLException ex) {
+                    LOG.log(Level.SEVERE, "Failed to handle monitor failure for id=" + monitorMap.monitor.getId(), ex);
+                }
+            } catch (Exception e) {
+                LOG.log(Level.SEVERE, "Monitor check failed for id=" + monitorMap.monitor.getId() + " url=" + monitorMap.monitor.getTargetUrl(), e);
+            }
+        }
+
+        private void handleFailure(MonitorRun monitorRun, int statusCode) throws SQLException {
+            monitorRun.setSuccess(false);
+            monitorRunService.createMonitorRun(monitorRun);
+
+            int currentFailures = monitorMap.failCount.get();
+            if (currentFailures > 0) {
+                currentFailures = monitorMap.failCount.decrementAndGet();
+            }
+
+            LOG.warning("Monitor id=" + monitorMap.monitor.getId() + " unexpected status: " + statusCode + " (remaining failures: " + currentFailures + ")");
+
+            if (currentFailures == 0) {
+                LOG.severe("Monitor id=" + monitorMap.monitor.getId() + " failure threshold reached - creating incident");
+                StringBuilder sb = new StringBuilder();
+                ArrayList<Integer> codes = monitorMap.monitor.getStatusCodes();
+                if (codes != null) {
+                    for (int i = 0; i < codes.size(); i++) {
+                        sb.append(codes.get(i));
+                        if (i < codes.size() - 1) sb.append(", ");
                     }
                 }
-            } catch (IOException | SQLException e) {
-                LOG.log(Level.SEVERE, "Monitor check failed for id=" + monitorMap.monitor.getId() + " url=" + monitorMap.monitor.getTargetUrl(), e);
+                incidentService.createIncident(monitorRun, sb.toString());
+                monitorMap.failCount.set(monitorMap.monitor.getFailureCount());
             }
         }
     }

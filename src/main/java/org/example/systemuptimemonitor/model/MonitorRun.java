@@ -24,6 +24,17 @@ public class MonitorRun {
         this.status_code = status_code;
     }
 
+    public MonitorRun(int monitor_id, long time, int status_code) {
+        this.monitor_id = monitor_id;
+        this.time = time;
+        this.status_code = status_code;
+    }
+
+    public MonitorRun(int monitor_id, long time) {
+        this.monitor_id = monitor_id;
+        this.time = time;
+    }
+
     public int getId() {
         return id;
     }

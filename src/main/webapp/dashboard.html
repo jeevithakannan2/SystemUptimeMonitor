@@ -159,12 +159,14 @@
         }
 
         let monitorsData = [];
+        let incidentsData = [];
 
         async function loadMonitors() {
             try {
                 const data = await API.getMonitors();
                 monitorsData = data.monitors || [];
                 renderMonitors();
+                if (incidentsData.length > 0) renderIncidents(incidentsData);
             } catch (err) {
                 document.getElementById('monitorsTable').innerHTML =
                     '<div class="empty-state"><p>Failed to load monitors</p></div>';
@@ -190,6 +192,7 @@
 
                 if (hash !== lastIncidentHash) {
                     lastIncidentHash = hash;
+                    incidentsData = incidents;
                     renderIncidents(incidents);
                 }
             } catch (err) {
@@ -206,9 +209,10 @@
             }
             el.innerHTML = `<div class="table-wrap"><table>
                 <thead><tr>
-                    <th>Status</th><th>Name</th><th>URL</th><th>Interval</th><th>Expected Codes</th><th>Allowed Failures</th><th>Created</th><th>Actions</th>
+                    <th>ID</th><th>Status</th><th>Name</th><th>URL</th><th>Interval</th><th>Expected Codes</th><th>Allowed Failures</th><th>Created</th><th>Actions</th>
                 </tr></thead>
                 <tbody>${monitorsData.map(m => `<tr>
+                    <td>#${m.id}</td>
                     <td>
                         <div style="display: flex; align-items: center;">
                             <span class="status-dot ${m.enabled ? 'up' : 'disabled'}"></span>${m.enabled ? 'Active' : 'Disabled'}
@@ -261,8 +265,8 @@
         async function loadIncidents() {
             try {
                 const data = await API.getIncidents();
-                const incidents = data.incidents || [];
-                renderIncidents(incidents);
+                incidentsData = data.incidents || [];
+                renderIncidents(incidentsData);
             } catch (err) {
                 document.getElementById('incidentsTable').innerHTML =
                     '<div class="empty-state"><p>Failed to load incidents</p></div>';
@@ -277,17 +281,22 @@
             }
             el.innerHTML = `<div class="table-wrap"><table>
                 <thead><tr>
-                    <th>ID</th><th>Status</th><th>Status Code</th><th>Expected Codes</th><th>Down Since</th><th>Resolved</th><th>Actions</th>
+                    <th>ID</th><th>Monitor ID</th><th>Monitor Name</th><th>Status</th><th>Status Code</th><th>Expected Codes</th><th>Down Since</th><th>Resolved</th><th>Actions</th>
                 </tr></thead>
-                <tbody>${incidents.map(i => `<tr>
+                <tbody>${incidents.map(i => {
+                    const monitor = monitorsData.find(m => m.id === i.monitor_id);
+                    const monitorName = monitor ? monitor.name : 'Unknown';
+                    return `<tr>
                     <td>#${i.id}</td>
+                    <td>#${i.monitor_id}</td>
+                    <td><strong>${esc(monitorName)}</strong></td>
                     <td><span class="badge ${i.resolved ? 'badge-success' : 'badge-danger'}">${i.resolved ? 'Resolved' : 'Active'}</span></td>
                     <td>${i.status_code}</td>
                     <td class="text-sm text-muted">${i.expected_status_codes || '—'}</td>
                     <td class="text-sm" style="white-space: nowrap">${formatTime(i.down_time)}</td>
                     <td class="text-sm" style="white-space: nowrap">${i.resolved_time && i.resolved_time > 0 ? formatTime(i.resolved_time) : '—'}</td>
                     <td>${!i.resolved ? `<button class="btn btn-primary btn-sm" onclick="openResolve(${i.id})">Resolve</button>` : ''}</td>
-                </tr>`).join('')}</tbody></table></div>`;
+                </tr>`}).join('')}</tbody></table></div>`;
         }
 
         function editMonitor(id) {
