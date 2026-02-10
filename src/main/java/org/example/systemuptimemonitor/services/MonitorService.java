@@ -10,10 +10,12 @@ import org.example.systemuptimemonitor.model.Incident;
 import org.example.systemuptimemonitor.model.Monitor;
 import org.example.systemuptimemonitor.util.DBManager;
 import org.example.systemuptimemonitor.util.MonitorExecutor;
+import org.example.systemuptimemonitor.util.SchemaManager;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -25,7 +27,7 @@ public class MonitorService {
     private final static IncidentDao incidentDao = new IncidentDao();
 
     public void createMonitor(Monitor monitor) throws SQLException, MonitorAlreadyExistsException {
-        try (Connection connection = DBManager.getConnection()) {
+        try (Connection connection = DBManager.getConnection(monitor.getOrganization())) {
             try {
                 connection.setAutoCommit(false);
                 if (monitorDao.getMonitorByURLAndOrg(connection, monitor.getTargetUrl(), monitor.getOrganization()) != null) {
@@ -44,12 +46,11 @@ public class MonitorService {
             } finally {
                 connection.setAutoCommit(true);
             }
-
         }
     }
 
-    public void deleteMonitor(int monitorId) throws SQLException, MissingMonitorException {
-        try (Connection connection = DBManager.getConnection()) {
+    public void deleteMonitor(int monitorId, String organization) throws SQLException, MissingMonitorException {
+        try (Connection connection = DBManager.getConnection(organization)) {
             try {
                 connection.setAutoCommit(false);
                 Monitor monitor = monitorDao.getMonitorById(connection, monitorId);
@@ -57,7 +58,7 @@ public class MonitorService {
                 statusCodeDao.deleteStatusCodes(connection, monitor.getId());
                 monitorDao.deleteMonitor(connection, monitor.getId());
                 monitorAuditDao.createAudit(connection, monitor.getId(), "DELETE");
-                MonitorExecutor.removeMonitor(monitor.getId());
+                MonitorExecutor.removeMonitor(monitor.getId(), organization);
                 connection.commit();
                 LOG.info("Monitor deleted: id=" + monitorId);
             } catch (SQLException e) {
@@ -71,14 +72,14 @@ public class MonitorService {
     }
 
     public void updateMonitor(Monitor monitor) throws SQLException {
-        try (Connection connection = DBManager.getConnection()) {
+        try (Connection connection = DBManager.getConnection(monitor.getOrganization())) {
             try {
                 connection.setAutoCommit(false);
                 monitorDao.updateMonitor(connection, monitor);
                 statusCodeDao.deleteStatusCodes(connection, monitor.getId());
                 statusCodeDao.addStatusCodes(connection, monitor.getId(), monitor.getStatusCodes());
                 monitorAuditDao.createAudit(connection, monitor.getId(), "UPDATE");
-                MonitorExecutor.removeMonitor(monitor.getId());
+                MonitorExecutor.removeMonitor(monitor.getId(), monitor.getOrganization());
                 MonitorExecutor.addMonitor(monitor);
                 connection.commit();
             } catch (SQLException e) {
@@ -90,9 +91,9 @@ public class MonitorService {
         }
     }
 
-    public Monitor getMonitor(int monitorId) throws SQLException, MissingMonitorException {
+    public Monitor getMonitor(int monitorId, String organization) throws SQLException, MissingMonitorException {
         Monitor monitor = null;
-        try (Connection connection = DBManager.getConnection()) {
+        try (Connection connection = DBManager.getConnection(organization)) {
             try {
                 connection.setAutoCommit(false);
                 monitor = monitorDao.getMonitorById(connection, monitorId);
@@ -111,7 +112,7 @@ public class MonitorService {
     }
 
     public ArrayList<Monitor> getAllMonitorsByOrganization(String organization) throws SQLException {
-        try (Connection connection = DBManager.getConnection()) {
+        try (Connection connection = DBManager.getConnection(organization)) {
             ArrayList<Monitor> monitors = monitorDao.getAllMonitorsByOrganization(connection, organization);
             for (Monitor monitor : monitors) {
                 monitor.setStatusCodes(statusCodeDao.getStatusCodes(connection, monitor.getId()));
@@ -120,24 +121,32 @@ public class MonitorService {
         }
     }
 
-    public ArrayList<org.example.systemuptimemonitor.model.MonitorAudit> getMonitorHistory(int monitorId) throws SQLException {
-        try (Connection connection = DBManager.getConnection()) {
+    public ArrayList<org.example.systemuptimemonitor.model.MonitorAudit> getMonitorHistory(int monitorId, String organization) throws SQLException {
+        try (Connection connection = DBManager.getConnection(organization)) {
             return monitorAuditDao.getAudits(connection, monitorId);
         }
     }
 
+    /**
+     * Returns all monitors across all organization schemas.
+     */
     public ArrayList<Monitor> getAllMonitors() throws SQLException {
-        try (Connection connection = DBManager.getConnection()) {
-            ArrayList<Monitor> monitors = monitorDao.getAllMonitors(connection);
-            for (Monitor monitor : monitors) {
-                monitor.setStatusCodes(statusCodeDao.getStatusCodes(connection, monitor.getId()));
+        ArrayList<Monitor> allMonitors = new ArrayList<>();
+        List<String> organizations = SchemaManager.getAllOrganizations();
+        for (String org : organizations) {
+            try (Connection connection = DBManager.getConnection(org)) {
+                ArrayList<Monitor> orgMonitors = monitorDao.getAllMonitors(connection);
+                for (Monitor monitor : orgMonitors) {
+                    monitor.setStatusCodes(statusCodeDao.getStatusCodes(connection, monitor.getId()));
+                }
+                allMonitors.addAll(orgMonitors);
             }
-            return monitors;
         }
+        return allMonitors;
     }
 
-    public boolean hasUnresolvedIncident(int monitorId) throws SQLException {
-        try (Connection connection = DBManager.getConnection()) {
+    public boolean hasUnresolvedIncident(int monitorId, String organization) throws SQLException {
+        try (Connection connection = DBManager.getConnection(organization)) {
             Incident incident = incidentDao.getLastUnresolvedIncident(connection, monitorId);
             LOG.fine("hasUnresolvedIncident check: monitorId=" + monitorId + " result=" + (incident == null));
             return incident == null;

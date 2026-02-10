@@ -21,19 +21,19 @@ public class IncidentService {
     private final static MonitorRunDao monitorRunDao = new MonitorRunDao();
 
     public ArrayList<Incident> getAllIncidentsByOrganization(String organization) throws SQLException {
-        try (Connection connection = DBManager.getConnection()) {
+        try (Connection connection = DBManager.getConnection(organization)) {
             return incidentDao.getIncidentsByOrganization(connection, organization);
         }
     }
 
-    public ArrayList<Incident> getIncidentsByMonitor(int monitorId) throws SQLException {
-        try (Connection connection = DBManager.getConnection()) {
+    public ArrayList<Incident> getIncidentsByMonitor(int monitorId, String organization) throws SQLException {
+        try (Connection connection = DBManager.getConnection(organization)) {
             return incidentDao.getIncidentsByMonitor(connection, monitorId);
         }
     }
 
-    public void createIncident(MonitorRun monitorRun, String expectedStatusCodes) throws SQLException {
-        try (Connection connection = DBManager.getConnection()) {
+    public void createIncident(MonitorRun monitorRun, String expectedStatusCodes, String organization) throws SQLException {
+        try (Connection connection = DBManager.getConnection(organization)) {
             try {
                 connection.setAutoCommit(false);
                 monitorRunDao.createMonitorRun(connection, monitorRun);
@@ -50,20 +50,20 @@ public class IncidentService {
         }
     }
 
-    public void resolveLastIncident(int monitorId, long resolvedTime) throws SQLException {
-        try (Connection connection = DBManager.getConnection()) {
+    public void resolveLastIncident(int monitorId, long resolvedTime, String organization) throws SQLException {
+        try (Connection connection = DBManager.getConnection(organization)) {
             Incident incident = incidentDao.getLastUnresolvedIncident(connection, monitorId);
             if (incident != null) {
                 incident.setResolvedTime(resolvedTime);
                 incident.setResolved(true);
-                incidentDao.updateIncident(incident);
+                incidentDao.updateIncident(connection, incident);
                 LOG.info("Auto-resolved incident id=" + incident.getId() + " for monitor_id=" + monitorId);
             }
         }
     }
 
-    public void resolveIncident(int incidentId, String notes) throws SQLException, MissingMonitorException, IncidentAlreadyResolvedException {
-        try (Connection connection = DBManager.getConnection()) {
+    public void resolveIncident(int incidentId, String notes, String organization) throws SQLException, MissingMonitorException, IncidentAlreadyResolvedException {
+        try (Connection connection = DBManager.getConnection(organization)) {
             Incident incident = incidentDao.getIncidentById(connection, incidentId);
             if (incident == null) {
                 throw new MissingIncidentException();

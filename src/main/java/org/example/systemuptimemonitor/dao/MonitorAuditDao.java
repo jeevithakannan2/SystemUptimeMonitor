@@ -1,7 +1,5 @@
 package org.example.systemuptimemonitor.dao;
 
-import org.example.systemuptimemonitor.util.DBManager;
-
 import java.sql.*;
 
 public class MonitorAuditDao {
@@ -16,10 +14,9 @@ public class MonitorAuditDao {
         }
     }
 
-    public boolean inAudit(int monitorId) throws SQLException {
-        String sql = "SELECT * FROM monitor_audits WHERE id=? AND operation != CREATED";
-        try (Connection connection = DBManager.getConnection()) {
-            PreparedStatement pst = connection.prepareStatement(sql);
+    public boolean inAudit(Connection connection, int monitorId) throws SQLException {
+        String sql = "SELECT * FROM monitor_audits WHERE id=? AND operation != 'CREATED'";
+        try (PreparedStatement pst = connection.prepareStatement(sql)) {
             pst.setInt(1, monitorId);
             ResultSet rs = pst.executeQuery();
             return rs.next();

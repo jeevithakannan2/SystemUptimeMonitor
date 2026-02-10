@@ -6,7 +6,9 @@ import org.example.systemuptimemonitor.exceptions.UserAlreadyExistsException;
 import org.example.systemuptimemonitor.model.InviteLink;
 import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.UserService;
+import org.example.systemuptimemonitor.util.DBManager;
 import org.example.systemuptimemonitor.util.ErrorResponse;
+import org.example.systemuptimemonitor.util.SchemaManager;
 import org.mindrot.jbcrypt.BCrypt;
 
 import javax.servlet.ServletException;
@@ -15,6 +17,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,9 +44,23 @@ public class CreateUser extends HttpServlet {
         }
 
         String organization = emailSplit[1];
-        InviteLink inviteLink = null;
+
+        // Check org exists — invite links are org-scoped
         try {
-            inviteLink = new InviteLinkDao().getInviteLink(code);
+            if (!SchemaManager.organizationExists(organization)) {
+                ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Organization not found");
+                return;
+            }
+        } catch (SQLException e) {
+            LOG.log(Level.SEVERE, "Failed to check organization: " + organization, e);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Server error");
+            return;
+        }
+
+        // Look up the invite in the org's schema
+        InviteLink inviteLink = null;
+        try (Connection connection = DBManager.getConnection(organization)) {
+            inviteLink = new InviteLinkDao().getInviteLink(connection, code);
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Failed to look up invite link: " + code, e);
         }
@@ -59,7 +76,7 @@ public class CreateUser extends HttpServlet {
         UserService userService = new UserService();
 
         try {
-            userService.createUserFromLink(user, inviteLink);
+            userService.createUserFromLink(user, inviteLink, organization);
             LOG.info("User created via invite link: " + email + " (role=" + inviteLink.getRole() + ")");
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Failed to create user from invite link: " + email, e);

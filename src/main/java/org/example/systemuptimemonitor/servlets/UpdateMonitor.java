@@ -2,6 +2,7 @@ package org.example.systemuptimemonitor.servlets;
 
 import org.example.systemuptimemonitor.exceptions.MissingMonitorException;
 import org.example.systemuptimemonitor.model.Monitor;
+import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.MonitorService;
 import org.example.systemuptimemonitor.util.ErrorResponse;
 import org.example.systemuptimemonitor.util.RequestBodyParser;
@@ -38,10 +39,11 @@ public class UpdateMonitor extends HttpServlet {
             return;
         }
 
+        User user = (User) req.getSession().getAttribute("user");
         MonitorService monitorService = new MonitorService();
         try {
             int monitorId = Integer.parseInt(monitorIdStr);
-            Monitor monitor = monitorService.getMonitor(monitorId);
+            Monitor monitor = monitorService.getMonitor(monitorId, user.getOrganization());
             if (name != null && !name.isEmpty()) monitor.setName(name);
             if (targetUrl != null && !targetUrl.isEmpty()) monitor.setTargetUrl(targetUrl);
             if (expected_status_codes != null && !expected_status_codes.isEmpty()) {

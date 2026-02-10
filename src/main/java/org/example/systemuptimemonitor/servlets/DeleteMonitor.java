@@ -1,6 +1,7 @@
 package org.example.systemuptimemonitor.servlets;
 
 import org.example.systemuptimemonitor.exceptions.MissingMonitorException;
+import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.MonitorService;
 import org.example.systemuptimemonitor.util.ErrorResponse;
 import org.example.systemuptimemonitor.util.RequestBodyParser;
@@ -22,6 +23,7 @@ public class DeleteMonitor extends HttpServlet {
 
     @Override
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        User user = (User) req.getSession().getAttribute("user");
         Map<String, String> params = RequestBodyParser.parse(req);
         String idStr = params.get("id");
         if (idStr == null || idStr.isEmpty()) {
@@ -31,7 +33,7 @@ public class DeleteMonitor extends HttpServlet {
         MonitorService monitorService = new MonitorService();
         try {
             int id = Integer.parseInt(idStr);
-            monitorService.deleteMonitor(id);
+            monitorService.deleteMonitor(id, user.getOrganization());
             LOG.info("Monitor deleted: id=" + id);
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Failed to delete monitor: " + idStr, e);

@@ -3,7 +3,9 @@ package org.example.systemuptimemonitor.servlets;
 import org.example.systemuptimemonitor.dao.UserDao;
 import org.example.systemuptimemonitor.exceptions.MissingUserException;
 import org.example.systemuptimemonitor.model.User;
+import org.example.systemuptimemonitor.util.DBManager;
 import org.example.systemuptimemonitor.util.ErrorResponse;
+import org.example.systemuptimemonitor.util.SchemaManager;
 import org.example.systemuptimemonitor.util.TokenManager;
 import org.mindrot.jbcrypt.BCrypt;
 
@@ -14,6 +16,9 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @WebServlet("/login")
@@ -25,12 +30,46 @@ public class Login extends HttpServlet {
         String email = req.getParameter("email");
         String password = req.getParameter("password");
 
+        if (email == null || password == null) {
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Email and password are required");
+            return;
+        }
+
+        // Derive organization from email domain
+        String[] emailSplit = email.split("@");
+        if (emailSplit.length != 2) {
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Not a valid email");
+            return;
+        }
+        String organization = emailSplit[1];
+
+        // Check org exists
+        try {
+            if (!SchemaManager.organizationExists(organization)) {
+                ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "Organization not found");
+                return;
+            }
+        } catch (SQLException e) {
+            LOG.log(Level.SEVERE, "Failed to check organization: " + organization, e);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Server error");
+            return;
+        }
+
         UserDao userDao = new UserDao();
         User user = null;
-        try {
-            user = userDao.getUserByEmail(email);
+        try (Connection connection = DBManager.getConnection(organization)) {
+            user = userDao.getUserByEmail(connection, email);
         } catch (MissingUserException e) {
             LOG.warning("Login failed - user not found: " + email);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "User not found");
+            return;
+        } catch (SQLException e) {
+            LOG.log(Level.SEVERE, "Database error during login: " + email, e);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Server error");
+            return;
+        }
+
+        if (user == null) {
             ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_FORBIDDEN, "User not found");
             return;
         }

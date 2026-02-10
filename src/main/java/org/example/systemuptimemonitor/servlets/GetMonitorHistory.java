@@ -1,6 +1,7 @@
 package org.example.systemuptimemonitor.servlets;
 
 import org.example.systemuptimemonitor.model.MonitorAudit;
+import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.MonitorService;
 import org.example.systemuptimemonitor.util.ErrorResponse;
 
@@ -37,10 +38,11 @@ public class GetMonitorHistory extends HttpServlet {
             return;
         }
 
+        User user = (User) req.getSession().getAttribute("user");
         MonitorService monitorService = new MonitorService();
         ArrayList<MonitorAudit> history;
         try {
-            history = monitorService.getMonitorHistory(monitorId);
+            history = monitorService.getMonitorHistory(monitorId, user.getOrganization());
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Failed to load history for monitor: " + monitorId, e);
             ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to load history");

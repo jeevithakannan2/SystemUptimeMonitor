@@ -10,8 +10,8 @@ import java.sql.SQLException;
 public class MonitorRunService {
     private final MonitorRunDao monitorRunDao = new MonitorRunDao();
 
-    public void createMonitorRun(MonitorRun monitorRun) throws SQLException {
-        try (Connection connection = DBManager.getConnection()) {
+    public void createMonitorRun(MonitorRun monitorRun, String organization) throws SQLException {
+        try (Connection connection = DBManager.getConnection(organization)) {
             monitorRunDao.createMonitorRun(connection, monitorRun);
         }
     }

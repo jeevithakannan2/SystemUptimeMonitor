@@ -24,28 +24,39 @@ import java.util.logging.Logger;
 public class MonitorExecutor implements ServletContextListener {
     private static final Logger LOG = Logger.getLogger(MonitorExecutor.class.getName());
     private final static ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
-    private final static ConcurrentHashMap<Integer, MonitorMap> monitors = new ConcurrentHashMap<>();
-    private final static ConcurrentHashMap<Integer, ScheduledFuture<?>> runningMonitors = new ConcurrentHashMap<>();
+    /**
+     * Monitors and scheduled futures are keyed by "org:monitorId" to avoid
+     * collisions between orgs that may share the same SERIAL-generated IDs.
+     */
+    private final static ConcurrentHashMap<String, MonitorMap> monitors = new ConcurrentHashMap<>();
+    private final static ConcurrentHashMap<String, ScheduledFuture<?>> runningMonitors = new ConcurrentHashMap<>();
     private final static IncidentService incidentService = new IncidentService();
     private final static MonitorService monitorService = new MonitorService();
     private final static MonitorRunService monitorRunService = new MonitorRunService();
 
-    public static void removeMonitor(int monitorId) {
-        monitors.remove(monitorId);
-        ScheduledFuture<?> scheduledFuture = runningMonitors.remove(monitorId);
+    /** Composite key: "organization:monitorId" */
+    private static String monitorKey(int monitorId, String organization) {
+        return organization + ":" + monitorId;
+    }
+
+    public static void removeMonitor(int monitorId, String organization) {
+        String key = monitorKey(monitorId, organization);
+        monitors.remove(key);
+        ScheduledFuture<?> scheduledFuture = runningMonitors.remove(key);
         if (scheduledFuture != null) {
             scheduledFuture.cancel(false);
-            LOG.info("Monitor removed from scheduler: id=" + monitorId);
+            LOG.info("Monitor removed from scheduler: id=" + monitorId + " org=" + organization);
         }
     }
 
     public static void addMonitor(Monitor monitor) {
         if (!monitor.isEnabled()) return;
+        String key = monitorKey(monitor.getId(), monitor.getOrganization());
         MonitorMap monitorMap = new MonitorMap(monitor);
-        monitors.put(monitor.getId(), monitorMap);
+        monitors.put(key, monitorMap);
         ScheduledFuture<?> scheduledFuture = executorService.scheduleAtFixedRate(new Job(monitorMap), 0, monitor.getCheckInterval(), TimeUnit.SECONDS);
-        runningMonitors.put(monitor.getId(), scheduledFuture);
-        LOG.info("Monitor added to scheduler: id=" + monitor.getId() + " interval=" + monitor.getCheckInterval() + "s");
+        runningMonitors.put(key, scheduledFuture);
+        LOG.info("Monitor added to scheduler: id=" + monitor.getId() + " org=" + monitor.getOrganization() + " interval=" + monitor.getCheckInterval() + "s");
     }
 
     @Override
@@ -58,20 +69,20 @@ public class MonitorExecutor implements ServletContextListener {
             throw new RuntimeException("Failed to initialize database schema", e);
         }
 
-        MonitorService monitorService = new MonitorService();
         try {
-            ArrayList<Monitor> monitors1 = monitorService.getAllMonitors();
-            for (Monitor monitor : monitors1) {
-                if (monitor.isEnabled())
-                    monitors.put(monitor.getId(), new MonitorMap(monitor));
+            ArrayList<Monitor> allMonitors = monitorService.getAllMonitors();
+            for (Monitor monitor : allMonitors) {
+                if (monitor.isEnabled()) {
+                    String key = monitorKey(monitor.getId(), monitor.getOrganization());
+                    monitors.put(key, new MonitorMap(monitor));
+                }
             }
-
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Failed to load monitors on startup", e);
             throw new RuntimeException(e);
         }
 
-        for (Map.Entry<Integer, MonitorMap> entry : monitors.entrySet()) {
+        for (Map.Entry<String, MonitorMap> entry : monitors.entrySet()) {
             ScheduledFuture<?> scheduledFuture = executorService.scheduleAtFixedRate(new Job(entry.getValue()), 0, entry.getValue().monitor.getCheckInterval(), TimeUnit.SECONDS);
             runningMonitors.put(entry.getKey(), scheduledFuture);
         }
@@ -108,13 +119,17 @@ public class MonitorExecutor implements ServletContextListener {
             this.monitorMap = monitorMap;
         }
 
+        private String org() {
+            return monitorMap.monitor.getOrganization();
+        }
+
         @Override
         public void run() {
             long startTime = System.currentTimeMillis();
             MonitorRun monitorRun = new MonitorRun(monitorMap.monitor.getId(), startTime);
 
             try {
-                if (!monitorService.hasUnresolvedIncident(monitorMap.monitor.getId())) return;
+                if (!monitorService.hasUnresolvedIncident(monitorMap.monitor.getId(), org())) return;
 
                 URL url = new URL(monitorMap.monitor.getTargetUrl());
 
@@ -134,8 +149,8 @@ public class MonitorExecutor implements ServletContextListener {
 
                 monitorRun.setSuccess(true);
                 monitorMap.failCount.set(monitorMap.monitor.getFailureCount());
-                monitorRunService.createMonitorRun(monitorRun);
-                incidentService.resolveLastIncident(monitorMap.monitor.getId(), startTime);
+                monitorRunService.createMonitorRun(monitorRun, org());
+                incidentService.resolveLastIncident(monitorMap.monitor.getId(), startTime, org());
                 LOG.fine("Monitor id=" + monitorMap.monitor.getId() + " check OK: status=" + statusCode + " responseTime=" + (endTime - startTime) + "ms");
 
             } catch (IOException e) {
@@ -153,7 +168,7 @@ public class MonitorExecutor implements ServletContextListener {
 
         private void handleFailure(MonitorRun monitorRun, int statusCode) throws SQLException {
             monitorRun.setSuccess(false);
-            monitorRunService.createMonitorRun(monitorRun);
+            monitorRunService.createMonitorRun(monitorRun, org());
 
             int currentFailures = monitorMap.failCount.get();
             if (currentFailures > 0) {
@@ -172,7 +187,7 @@ public class MonitorExecutor implements ServletContextListener {
                         if (i < codes.size() - 1) sb.append(", ");
                     }
                 }
-                incidentService.createIncident(monitorRun, sb.toString());
+                incidentService.createIncident(monitorRun, sb.toString(), org());
                 monitorMap.failCount.set(monitorMap.monitor.getFailureCount());
             }
         }

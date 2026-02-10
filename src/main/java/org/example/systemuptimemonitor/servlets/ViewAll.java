@@ -5,6 +5,7 @@ import org.example.systemuptimemonitor.model.Monitor;
 import org.example.systemuptimemonitor.services.IncidentService;
 import org.example.systemuptimemonitor.services.MonitorService;
 import org.example.systemuptimemonitor.util.ErrorResponse;
+import org.example.systemuptimemonitor.util.SchemaManager;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -25,25 +26,45 @@ public class ViewAll extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String org = req.getParameter("org");
+
+        if (org == null || org.isEmpty()) {
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_BAD_REQUEST, "Missing required parameter: org");
+            return;
+        }
+
+        // Validate that the org exists
+        try {
+            if (!SchemaManager.organizationExists(org)) {
+                ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_NOT_FOUND, "Organization not found");
+                return;
+            }
+        } catch (SQLException e) {
+            LOG.log(Level.SEVERE, "Failed to check organization: " + org, e);
+            ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Server error");
+            return;
+        }
+
         MonitorService monitorService = new MonitorService();
         IncidentService incidentService = new IncidentService();
 
         ArrayList<Monitor> monitors;
         try {
-            monitors = monitorService.getAllMonitors();
+            monitors = monitorService.getAllMonitorsByOrganization(org);
         } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "Failed to load all monitors for status page", e);
+            LOG.log(Level.SEVERE, "Failed to load monitors for org: " + org, e);
             ErrorResponse.sendJsonError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to load status");
             return;
         }
+
         resp.setContentType("application/json");
         PrintWriter pw = resp.getWriter();
-        pw.print("{\"monitors\":[");
+        pw.print("{\"organization\":\"" + org + "\",\"monitors\":[");
         for (int i = 0; i < monitors.size(); i++) {
             Monitor monitor = monitors.get(i);
             ArrayList<Incident> incidents = null;
             try {
-                incidents = incidentService.getIncidentsByMonitor(monitor.getId());
+                incidents = incidentService.getIncidentsByMonitor(monitor.getId(), org);
             } catch (SQLException e) {
                 LOG.log(Level.WARNING, "Failed to load incidents for monitor id=" + monitor.getId(), e);
             }

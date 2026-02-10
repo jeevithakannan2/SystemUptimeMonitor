@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
@@ -58,75 +59,65 @@ public class DBManager {
         }
     }
 
+    /**
+     * Returns a connection using the default public schema search path.
+     * Use for the public organizations registry table.
+     */
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(url, username, password);
     }
 
+    /**
+     * Returns a connection with search_path set to the organization's schema + public.
+     * All unqualified table references resolve first in the org schema, then in public.
+     * Use for ALL org-scoped tables: users, invites, monitors, monitor_runs, incidents,
+     * status_codes, monitor_audits.
+     */
+    public static Connection getConnection(String organization) throws SQLException {
+        Connection conn = DriverManager.getConnection(url, username, password);
+        String schema = SchemaManager.toSchemaName(organization);
+        String quotedSchema = "\"" + schema.replace("\"", "\"\"") + "\"";
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("SET search_path TO " + quotedSchema + ", public");
+        }
+        return conn;
+    }
+
+    /**
+     * Initializes the public-schema organizations registry table and ensures
+     * org schemas exist for every registered organization.
+     */
     public static void initSchema() throws SQLException {
-        String ddl = "CREATE TABLE IF NOT EXISTS users ("
+        // Public schema: only the organizations registry
+        String ddl = "CREATE TABLE IF NOT EXISTS public.organizations ("
                 + "  id SERIAL PRIMARY KEY,"
-                + "  email VARCHAR(255) NOT NULL UNIQUE,"
-                + "  password VARCHAR(255) NOT NULL,"
-                + "  role VARCHAR(50) NOT NULL,"
-                + "  organization VARCHAR(255) NOT NULL"
-                + ");"
-                + "CREATE TABLE IF NOT EXISTS monitors ("
-                + "  id SERIAL PRIMARY KEY,"
-                + "  name VARCHAR(255) NOT NULL,"
-                + "  target_url VARCHAR(2048) NOT NULL,"
-                + "  check_interval INTEGER NOT NULL,"
-                + "  created_time TIMESTAMP NOT NULL,"
-                + "  created_by INTEGER NOT NULL REFERENCES users(id),"
-                + "  failure_count INTEGER NOT NULL DEFAULT 0,"
-                + "  organization VARCHAR(255) NOT NULL,"
-                + "  enabled BOOLEAN NOT NULL DEFAULT TRUE"
-                + ");"
-                + "CREATE TABLE IF NOT EXISTS monitor_runs ("
-                + "  id SERIAL PRIMARY KEY,"
-                + "  monitor_id INTEGER NOT NULL REFERENCES monitors(id) ON DELETE CASCADE,"
-                + "  time TIMESTAMP NOT NULL,"
-                + "  response_time INTEGER NOT NULL,"
-                + "  status_code INTEGER NOT NULL,"
-                + "  success BOOLEAN NOT NULL"
-                + ");"
-                + "CREATE TABLE IF NOT EXISTS incidents ("
-                + "  id SERIAL PRIMARY KEY,"
-                + "  monitor_run_id INTEGER NOT NULL REFERENCES monitor_runs(id) ON DELETE CASCADE,"
-                + "  down_time TIMESTAMP NOT NULL,"
-                + "  resolved_time TIMESTAMP,"
-                + "  status_code INTEGER NOT NULL,"
-                + "  expected_status_codes VARCHAR(255),"
-                + "  resolved BOOLEAN NOT NULL DEFAULT FALSE,"
-                + "  notes TEXT"
-                + ");"
-                + "CREATE TABLE IF NOT EXISTS status_codes ("
-                + "  monitor_id INTEGER NOT NULL REFERENCES monitors(id) ON DELETE CASCADE,"
-                + "  status_code INTEGER NOT NULL,"
-                + "  PRIMARY KEY (monitor_id, status_code)"
-                + ");"
-                + "CREATE TABLE IF NOT EXISTS invites ("
-                + "  id SERIAL PRIMARY KEY,"
-                + "  created_by INTEGER NOT NULL REFERENCES users(id),"
-                + "  created_time TIMESTAMP NOT NULL,"
-                + "  expired BOOLEAN NOT NULL DEFAULT FALSE,"
-                + "  url VARCHAR(255) NOT NULL UNIQUE,"
-                + "  role VARCHAR(50) NOT NULL"
-                + ");"
-                + "CREATE TABLE IF NOT EXISTS monitor_audits ("
-                + "  id SERIAL PRIMARY KEY,"
-                + "  monitor_id INTEGER NOT NULL REFERENCES monitors(id) ON DELETE CASCADE,"
-                + "  operation VARCHAR(50) NOT NULL,"
-                + "  time TIMESTAMP NOT NULL"
+                + "  name VARCHAR(255) NOT NULL UNIQUE,"
+                + "  schema_name VARCHAR(255) NOT NULL UNIQUE"
                 + ");";
 
         try (Connection connection = getConnection();
              Statement stmt = connection.createStatement()) {
             stmt.execute(ddl);
+        }
 
-            try {
-                stmt.execute("ALTER TABLE incidents ADD COLUMN IF NOT EXISTS expected_status_codes VARCHAR(255)");
-            } catch (SQLException ignored) {
+        // Ensure all registered orgs have their schemas initialized
+        initExistingOrgSchemas();
+    }
+
+    /**
+     * Ensures every organization registered in public.organizations has its schema
+     * and tables created.
+     */
+    private static void initExistingOrgSchemas() {
+        try (Connection connection = getConnection();
+             Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT name FROM public.organizations")) {
+            while (rs.next()) {
+                String org = rs.getString("name");
+                SchemaManager.createOrgSchema(connection, org);
             }
+        } catch (SQLException e) {
+            LOG.fine("Could not initialize existing org schemas: " + e.getMessage());
         }
     }
 }

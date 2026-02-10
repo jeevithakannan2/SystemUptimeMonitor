@@ -2,7 +2,6 @@ package org.example.systemuptimemonitor.dao;
 
 import org.example.systemuptimemonitor.exceptions.MissingUserException;
 import org.example.systemuptimemonitor.model.User;
-import org.example.systemuptimemonitor.util.DBManager;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -25,27 +24,16 @@ public class UserDao {
         }
     }
 
-    public boolean doesOrganizationExists(Connection connection, String organization) throws SQLException {
-        String sql = "SELECT * FROM users where organization=?";
-        ResultSet rs = null;
+    public User getUserByEmail(Connection connection, String email) throws MissingUserException {
+        String sql = "SELECT * FROM users WHERE email=?";
         try (PreparedStatement pst = connection.prepareStatement(sql)) {
-            pst.setString(1, organization);
-            rs = pst.executeQuery();
-            return rs.next();
-        } finally {
-            if (rs != null) rs.close();
-        }
-    }
-
-    public User getUserByEmail(String email) throws MissingUserException {
-        try (Connection connection = DBManager.getConnection()) {
-            String sql = "SELECT * FROM users WHERE email=?";
-            PreparedStatement pst = connection.prepareStatement(sql);
             pst.setString(1, email);
             ResultSet rs = pst.executeQuery();
             if (rs.next()) {
                 return new User(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5));
-            } else throw new MissingUserException();
+            } else {
+                throw new MissingUserException();
+            }
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Database error looking up user: " + email, e);
         }
@@ -53,7 +41,7 @@ public class UserDao {
     }
 
     public void deleteUser(Connection connection, String email) throws SQLException {
-        String sql = "DELETE FROM users WHERE id=?";
+        String sql = "DELETE FROM users WHERE email=?";
         try (PreparedStatement pst = connection.prepareStatement(sql)) {
             pst.setString(1, email);
             pst.executeUpdate();

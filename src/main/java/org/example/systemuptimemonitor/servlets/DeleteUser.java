@@ -1,5 +1,6 @@
 package org.example.systemuptimemonitor.servlets;
 
+import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.UserService;
 import org.example.systemuptimemonitor.util.ErrorResponse;
 import org.example.systemuptimemonitor.util.RequestBodyParser;
@@ -21,6 +22,7 @@ public class DeleteUser extends HttpServlet {
 
     @Override
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        User user = (User) req.getSession().getAttribute("user");
         Map<String, String> params = RequestBodyParser.parse(req);
         String email = params.get("delete_email");
 
@@ -31,7 +33,7 @@ public class DeleteUser extends HttpServlet {
 
         UserService userService = new UserService();
         try {
-            userService.deleteUser(email);
+            userService.deleteUser(email, user.getOrganization());
             LOG.info("User deleted: " + email);
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Failed to delete user: " + email, e);

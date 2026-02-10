@@ -2,6 +2,7 @@ package org.example.systemuptimemonitor.servlets;
 
 import org.example.systemuptimemonitor.exceptions.IncidentAlreadyResolvedException;
 import org.example.systemuptimemonitor.exceptions.MissingIncidentException;
+import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.IncidentService;
 import org.example.systemuptimemonitor.util.ErrorResponse;
 import org.example.systemuptimemonitor.util.RequestBodyParser;
@@ -45,10 +46,11 @@ public class ResolveIncident extends HttpServlet {
             return;
         }
 
+        User user = (User) req.getSession().getAttribute("user");
         IncidentService incidentService = new IncidentService();
 
         try {
-            incidentService.resolveIncident(incidentId, notes);
+            incidentService.resolveIncident(incidentId, notes, user.getOrganization());
             LOG.info("Incident resolved: id=" + incidentId);
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Failed to resolve incident: id=" + incidentId, e);

@@ -8,6 +8,7 @@ import org.example.systemuptimemonitor.exceptions.UserAlreadyExistsException;
 import org.example.systemuptimemonitor.model.InviteLink;
 import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.util.DBManager;
+import org.example.systemuptimemonitor.util.SchemaManager;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -19,21 +20,38 @@ public class UserService {
     private final static UserDao userDao = new UserDao();
     private final static InviteLinkDao inviteLinkDao = new InviteLinkDao();
 
+    /**
+     * Creates a new user. If the organization doesn't exist yet, the user
+     * becomes admin and a new org schema is created. Otherwise the user
+     * must specify a valid role (operator/viewer).
+     */
     public void createUser(User user) throws SQLException, RoleMissingException {
-        try (Connection connection = DBManager.getConnection()) {
+        String org = user.getOrganization();
+        boolean orgExists = SchemaManager.organizationExists(org);
+
+        if (orgExists) {
+            String role = user.getRole();
+            if (role == null || (!role.equals("operator") && !role.equals("viewer"))) {
+                throw new RoleMissingException();
+            }
+        } else {
+            user.setRole("admin");
+        }
+
+        // If org doesn't exist, create schema first (uses public connection)
+        if (!orgExists) {
+            try (Connection pubConn = DBManager.getConnection()) {
+                SchemaManager.createOrgSchema(pubConn, org);
+            }
+        }
+
+        // Create user in the org schema
+        try (Connection connection = DBManager.getConnection(org)) {
             try {
                 connection.setAutoCommit(false);
-                String role = user.getRole();
-                if (userDao.doesOrganizationExists(connection, user.getOrganization())) {
-                    if (role == null || (!role.equals("operator") && !role.equals("viewer"))) {
-                        throw new RoleMissingException();
-                    }
-                } else {
-                    user.setRole("admin");
-                }
                 userDao.createUser(connection, user);
                 connection.commit();
-                LOG.info("User created: " + user.getEmail() + " role=" + user.getRole() + " org=" + user.getOrganization());
+                LOG.info("User created: " + user.getEmail() + " role=" + user.getRole() + " org=" + org);
             } catch (SQLException e) {
                 connection.rollback();
                 LOG.log(Level.SEVERE, "Transaction failed for createUser: " + user.getEmail(), e);
@@ -44,8 +62,12 @@ public class UserService {
         }
     }
 
-    public void createUserFromLink(User user, InviteLink inviteLink) throws SQLException, InviteLinkExpiredException, UserAlreadyExistsException {
-        try (Connection connection = DBManager.getConnection()) {
+    /**
+     * Creates a user from an invite link. Both the invite and user live
+     * in the same org schema.
+     */
+    public void createUserFromLink(User user, InviteLink inviteLink, String organization) throws SQLException, InviteLinkExpiredException, UserAlreadyExistsException {
+        try (Connection connection = DBManager.getConnection(organization)) {
             try {
                 connection.setAutoCommit(false);
                 if (inviteLink.isExpired()) {
@@ -60,6 +82,7 @@ public class UserService {
                 }
                 userDao.createUser(connection, user);
                 inviteLinkDao.expireInviteLink(connection, inviteLink.getUrl());
+                connection.commit();
                 LOG.info("User created from invite: " + user.getEmail() + " role=" + user.getRole());
             } catch (SQLException e) {
                 connection.rollback();
@@ -71,8 +94,8 @@ public class UserService {
         }
     }
 
-    public void deleteUser(String email) throws SQLException {
-        try (Connection connection = DBManager.getConnection()) {
+    public void deleteUser(String email, String organization) throws SQLException {
+        try (Connection connection = DBManager.getConnection(organization)) {
             userDao.deleteUser(connection, email);
         }
     }

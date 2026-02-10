@@ -2,6 +2,7 @@ package org.example.systemuptimemonitor.servlets;
 
 import org.example.systemuptimemonitor.dao.StatusCodeDao;
 import org.example.systemuptimemonitor.model.MonitorRun;
+import org.example.systemuptimemonitor.model.User;
 import org.example.systemuptimemonitor.services.IncidentService;
 import org.example.systemuptimemonitor.util.DBManager;
 import org.example.systemuptimemonitor.util.ErrorResponse;
@@ -24,6 +25,7 @@ public class CreateIncident extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        User user = (User) req.getSession().getAttribute("user");
         IncidentService incidentService = new IncidentService();
         String monitorIdStr = req.getParameter("monitor_id");
         String statusCodeStr = req.getParameter("status_code");
@@ -46,7 +48,7 @@ public class CreateIncident extends HttpServlet {
 
         // Fetch expected status codes for the monitor
         String expectedCodesStr = "";
-        try (Connection conn = DBManager.getConnection()) {
+        try (Connection conn = DBManager.getConnection(user.getOrganization())) {
             StatusCodeDao statusCodeDao = new StatusCodeDao();
             ArrayList<Integer> codes = statusCodeDao.getStatusCodes(conn, monitorId);
             if (codes != null && !codes.isEmpty()) {
@@ -63,7 +65,7 @@ public class CreateIncident extends HttpServlet {
 
         MonitorRun monitorRun = new MonitorRun(monitorId, System.currentTimeMillis(), 0, statusCode);
         try {
-            incidentService.createIncident(monitorRun, expectedCodesStr);
+            incidentService.createIncident(monitorRun, expectedCodesStr, user.getOrganization());
             LOG.info("Incident created for monitor_id=" + monitorId + " status_code=" + statusCode);
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Failed to create incident for monitor_id=" + monitorId, e);

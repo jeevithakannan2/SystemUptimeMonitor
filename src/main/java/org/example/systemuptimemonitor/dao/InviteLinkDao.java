@@ -1,7 +1,6 @@
 package org.example.systemuptimemonitor.dao;
 
 import org.example.systemuptimemonitor.model.InviteLink;
-import org.example.systemuptimemonitor.util.DBManager;
 
 import java.sql.*;
 
@@ -19,10 +18,9 @@ public class InviteLinkDao {
         }
     }
 
-    public InviteLink getInviteLink(String code) throws SQLException {
-        String sql = "SELECT * FROM invites where url=?";
-        try (Connection connection = DBManager.getConnection()) {
-            PreparedStatement pst = connection.prepareStatement(sql);
+    public InviteLink getInviteLink(Connection connection, String code) throws SQLException {
+        String sql = "SELECT * FROM invites WHERE url=?";
+        try (PreparedStatement pst = connection.prepareStatement(sql)) {
             pst.setString(1, code);
             ResultSet rs = pst.executeQuery();
             if (rs.next())

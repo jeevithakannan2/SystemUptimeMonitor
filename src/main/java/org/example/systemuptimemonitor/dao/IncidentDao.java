@@ -1,7 +1,6 @@
 package org.example.systemuptimemonitor.dao;
 
 import org.example.systemuptimemonitor.model.Incident;
-import org.example.systemuptimemonitor.util.DBManager;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -59,13 +58,13 @@ public class IncidentDao {
         return incidents;
     }
 
-    public void updateIncident(Incident incident) throws SQLException {
-        String sql = "UPDATE incidents SET resolved=? resolved_time=? WHERE id=?";
-        try (Connection connection = DBManager.getConnection()) {
-            PreparedStatement pst = connection.prepareStatement(sql);
+    public void updateIncident(Connection connection, Incident incident) throws SQLException {
+        String sql = "UPDATE incidents SET resolved=?, resolved_time=? WHERE id=?";
+        try (PreparedStatement pst = connection.prepareStatement(sql)) {
             pst.setBoolean(1, incident.isResolved());
             pst.setTimestamp(2, new Timestamp(incident.getResolvedTime()));
             pst.setInt(3, incident.getId());
+            pst.executeUpdate();
         }
     }
 
