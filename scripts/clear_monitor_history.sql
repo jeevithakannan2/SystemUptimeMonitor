@@ -1,0 +1,1 @@
+TRUNCATE TABLE monitors, monitor_runs, status_codes, incidents, monitor_audits CASCADE;
