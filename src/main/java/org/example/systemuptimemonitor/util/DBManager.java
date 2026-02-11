@@ -16,6 +16,9 @@ public class DBManager {
     private static final String url;
     private static final String username;
     private static final String password;
+    private static final String host;
+    private static final String port;
+    private static final String dbName;
 
     static {
         Properties props = new Properties();
@@ -33,21 +36,26 @@ public class DBManager {
                 }
             } else {
                 // Fall back to system environment variables
-                if (System.getenv("DB_URL") != null) {
-                    props.setProperty("DB_URL", System.getenv("DB_URL"));
+                if (System.getenv("DB_HOST") != null) {
                     props.setProperty("DB_USERNAME", System.getenv("DB_USERNAME"));
                     props.setProperty("DB_PASSWORD", System.getenv("DB_PASSWORD"));
+                    props.setProperty("DB_HOST", System.getenv("DB_HOST"));
+                    props.setProperty("DB_PORT", System.getenv("DB_PORT"));
+                    props.setProperty("DB_NAME", System.getenv("DB_NAME"));
                 } else {
-                    throw new RuntimeException(".env file not found and DB_URL environment variable not set");
+                    throw new RuntimeException(".env file not found and DB_HOST environment variable not set");
                 }
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to load .env file", e);
         }
 
-        url = props.getProperty("DB_URL");
         username = props.getProperty("DB_USERNAME");
         password = props.getProperty("DB_PASSWORD");
+        host = props.getProperty("DB_HOST");
+        port = props.getProperty("DB_PORT", "5432");
+        dbName = props.getProperty("DB_NAME");
+        url = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
 
         LOG.info("Database configured: " + url);
 
