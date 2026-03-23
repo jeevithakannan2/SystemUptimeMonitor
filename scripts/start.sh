@@ -3,14 +3,5 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-echo "── Building frontend ──"
-cd frontend
-npm install --silent
-npm run build
-cd ..
-
-echo "── Building WAR ──"
-./mvnw clean package -DskipTests -q
-
-echo "── Starting services ──"
+echo "── Starting all services ──"
 docker-compose up --build "$@"

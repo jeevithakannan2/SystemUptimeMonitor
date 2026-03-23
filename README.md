@@ -14,15 +14,11 @@ cp .env.example .env
 #   DB_PASSWORD=secret
 #   DB_NAME=sysuptimemonitor
 
-# 2. Build and run (builds frontend + WAR, starts all services)
-./scripts/start.sh
-
-# Or step by step:
-cd frontend && npm install && npm run build && cd ..
-./mvnw clean package -DskipTests
+# 2. Build and run
 docker-compose up --build
 
-# App available at http://localhost:9090
+# UI available at http://localhost:5173
+# API available at http://localhost:9090 (direct, optional)
 ```
 
 ### Manual Setup

@@ -28,3 +28,12 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
+
+  frontend:
+    build: ./frontend
+    container_name: mini-frontend
+    restart: always
+    depends_on:
+      - app
+    ports:
+      - "5173:5173"
