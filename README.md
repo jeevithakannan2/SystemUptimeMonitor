@@ -59,6 +59,8 @@ scripts/reinit_db.sh all       # Clear ALL data including users and monitors
 | Language | Java 8 |
 | Web Framework | Java Servlet 4.0 (no Spring) |
 | Database | PostgreSQL 16 |
+| Frontend | React 18 + TypeScript + Vite |
+| UI Components | Shadcn/ui + Tailwind CSS v4 |
 | Password Hashing | BCrypt (jbcrypt) |
 | Build Tool | Maven (via Maven Wrapper) |
 | App Server | Apache Tomcat 9 |
@@ -87,10 +89,20 @@ src/main/java/org/example/systemuptimemonitor/
 └── util/           # DBManager, TokenManager, MonitorExecutor, SchemaManager
 
 src/main/webapp/
-├── *.html          # Frontend pages (login, dashboard, admin, status)
-├── css/style.css   # Styles
-├── js/app.js       # API client and session management
+├── index.html      # SPA entry point (built from frontend/)
+├── assets/         # Built JS/CSS bundles and fonts
 └── WEB-INF/web.xml
+
+frontend/               # React SPA source
+├── src/
+│   ├── components/     # UI components (GlassCard, NavRail, shadcn/ui)
+│   ├── hooks/          # useAuth, useSidebar
+│   ├── pages/          # Login, Register, Dashboard, Admin, Status, Invite
+│   ├── services/       # API client (Axios)
+│   ├── types/          # TypeScript interfaces
+│   └── index.css       # Solstice glassmorphic theme
+├── package.json
+└── vite.config.ts      # Proxy to Tomcat, builds to src/main/webapp/
 
 scripts/            # Database management scripts
 ```
@@ -109,3 +121,15 @@ scripts/            # Database management scripts
 ./mvnw test -Dtest=ClassName              # Run a single test class
 ./mvnw test -Dtest=ClassName#methodName   # Run a single test method
 ```
+
+## Frontend Development
+
+```bash
+cd frontend
+npm install                # Install dependencies
+npm run dev                # Start dev server on :3000 (proxies API to :8080)
+npm run build              # Production build → src/main/webapp/
+npm run lint               # Lint with ESLint
+```
+
+The Vite dev server proxies `/api/*` requests to `localhost:8080` (Tomcat), stripping the `/api` prefix.

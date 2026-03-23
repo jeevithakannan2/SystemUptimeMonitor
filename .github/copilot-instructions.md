@@ -114,3 +114,49 @@ scripts/reinit_db.sh all                # Clear ALL data including users and mon
 Deploy `target/SystemUptimeMonitor-1.0-SNAPSHOT.war` to Tomcat 9. Place `.env` file in Tomcat's working directory or set `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USERNAME`/`DB_PASSWORD` as environment variables.
 
 Dependencies: `javax.servlet-api` (provided), `postgresql` (JDBC driver), `jackson-core` (unused), `jbcrypt` (password hashing), JUnit 5 (test).
+
+## Frontend (React SPA)
+
+The frontend lives in `frontend/` and is a React 18 + TypeScript + Vite SPA using Tailwind CSS v4 and Shadcn/ui components with a Solstice warm glassmorphic design system.
+
+### Stack
+- React 18 + TypeScript + Vite
+- Tailwind CSS v4 (`@tailwindcss/vite` plugin — no `tailwind.config` needed)
+- Shadcn/ui (new-york style) with Radix primitives
+- Lucide React icons, Framer Motion, next-themes, Sonner toasts
+- React Router v6 (client-side routing)
+- Axios for API calls
+
+### Structure
+```
+frontend/src/
+├── components/       # Reusable components (GlassCard, NavRail, StatusBadge, etc.)
+│   └── ui/           # Shadcn/ui generated components
+├── hooks/            # useAuth (AuthContext), useSidebar
+├── pages/            # Login, Register, Invite, Dashboard, Admin, Status
+├── services/api.ts   # Axios client with all backend endpoints
+├── types/index.ts    # TypeScript interfaces (Monitor, Incident, User, etc.)
+├── lib/utils.ts      # cn() utility for Tailwind class merging
+└── index.css         # Solstice theme (OKLch CSS variables, glass utilities)
+```
+
+### Dev Workflow
+```bash
+cd frontend
+npm install            # Install dependencies
+npm run dev            # Start dev server on :3000 (proxies /api/* → :8080)
+npm run build          # Production build → src/main/webapp/
+```
+
+### API Proxy
+Vite dev server proxies `/api/*` to `localhost:8080`, stripping the `/api` prefix. Pages call `api.get('/api/monitors')` which becomes `GET /monitors` on Tomcat.
+
+### Auth Pattern
+Cookie-based auth using the existing backend token system. `useAuth` hook provides `user`, `isAuthenticated`, `isAdmin`, `isOperator`, `logout`. Protected routes are guarded in `App.tsx` router config.
+
+### Adding Shadcn Components
+```bash
+cd frontend
+npx shadcn@latest add <component-name>
+# Then move from @/components/ui/ to src/components/ui/ if shadcn creates a literal @/ directory
+```
