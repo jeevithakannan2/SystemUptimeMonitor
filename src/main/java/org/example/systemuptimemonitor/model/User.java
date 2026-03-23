@@ -7,6 +7,7 @@ public class User {
     private String role;
     private String organization;
     private long loggedIn;
+    private boolean emailNotifications;
 
     public User() {
     }
@@ -72,6 +73,14 @@ public class User {
 
     public void setLoggedIn(long loggedIn) {
         this.loggedIn = loggedIn;
+    }
+
+    public boolean isEmailNotifications() {
+        return emailNotifications;
+    }
+
+    public void setEmailNotifications(boolean emailNotifications) {
+        this.emailNotifications = emailNotifications;
     }
 
 }

@@ -109,4 +109,22 @@ export async function getOrganizations(): Promise<{ organizations: string[] }> {
   return data;
 }
 
+// Notifications
+export async function getSubscriptions(): Promise<{ email_notifications: boolean; subscribed_monitors: number[] }> {
+  const { data } = await api.get('/subscriptions');
+  return data;
+}
+
+export async function updateNotificationPreference(enabled: boolean): Promise<void> {
+  await api.put('/notification_preference', params({ enabled }));
+}
+
+export async function subscribeMonitor(monitor_id: number): Promise<void> {
+  await api.post('/subscribe_monitor', params({ monitor_id }));
+}
+
+export async function unsubscribeMonitor(monitor_id: number): Promise<void> {
+  await api.delete('/unsubscribe_monitor', { data: params({ monitor_id }) });
+}
+
 export default api;

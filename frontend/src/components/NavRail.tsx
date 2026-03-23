@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useSidebar } from '@/hooks/useSidebar';
+import { getSubscriptions, updateNotificationPreference } from '@/services/api';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -15,6 +18,8 @@ import {
   Moon,
   LogOut,
   Activity,
+  Bell,
+  BellOff,
 } from 'lucide-react';
 
 const COLLAPSED_WIDTH = 64;
@@ -26,6 +31,25 @@ export function NavRail() {
   const { theme, setTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const [emailNotifications, setEmailNotifications] = useState(false);
+
+  useEffect(() => {
+    getSubscriptions()
+      .then((data) => setEmailNotifications(data.email_notifications))
+      .catch(() => {});
+  }, []);
+
+  const toggleNotifications = async () => {
+    try {
+      const newValue = !emailNotifications;
+      await updateNotificationPreference(newValue);
+      setEmailNotifications(newValue);
+      toast.success(newValue ? 'Email notifications enabled' : 'Email notifications disabled');
+    } catch {
+      toast.error('Failed to update notification preference');
+    }
+  };
 
   const initials = user?.email
     ? user.email.split('@')[0].slice(0, 2).toUpperCase()
@@ -141,6 +165,27 @@ export function NavRail() {
           {expanded && (
             <motion.span className="whitespace-nowrap overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15, delay: 0.05 }}>
               Theme
+            </motion.span>
+          )}
+        </button>
+
+        <button
+          onClick={toggleNotifications}
+          className={cn(
+            'group relative flex items-center rounded-xl py-2.5 text-sm font-medium transition-all cursor-pointer border-none bg-transparent',
+            expanded ? 'gap-3 px-3' : 'justify-center px-0',
+            emailNotifications
+              ? 'text-primary hover:bg-accent/60'
+              : 'text-muted-foreground hover:text-foreground hover:bg-accent/60',
+          )}
+        >
+          {emailNotifications
+            ? <Bell className="h-[18px] w-[18px] shrink-0" />
+            : <BellOff className="h-[18px] w-[18px] shrink-0" />
+          }
+          {expanded && (
+            <motion.span className="whitespace-nowrap overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15, delay: 0.05 }}>
+              Notifications
             </motion.span>
           )}
         </button>

@@ -3,6 +3,7 @@ export interface User {
   email: string;
   role: 'admin' | 'operator' | 'viewer';
   organization: string;
+  email_notifications?: boolean;
 }
 
 export interface Monitor {

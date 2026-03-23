@@ -69,7 +69,8 @@ public class SchemaManager {
                 + "  email VARCHAR(255) NOT NULL UNIQUE,"
                 + "  password VARCHAR(255) NOT NULL,"
                 + "  role VARCHAR(50) NOT NULL,"
-                + "  organization VARCHAR(255) NOT NULL"
+                + "  organization VARCHAR(255) NOT NULL,"
+                + "  email_notifications BOOLEAN NOT NULL DEFAULT FALSE"
                 + ")",
 
             // Invites table — org-scoped, references org users
@@ -131,6 +132,13 @@ public class SchemaManager {
                 + "  monitor_id INTEGER NOT NULL,"
                 + "  operation VARCHAR(50) NOT NULL,"
                 + "  time TIMESTAMP NOT NULL"
+                + ")",
+
+            // Monitor notification subscriptions
+            "CREATE TABLE IF NOT EXISTS " + q + ".monitor_subscriptions ("
+                + "  user_id INTEGER NOT NULL REFERENCES " + q + ".users(id) ON DELETE CASCADE,"
+                + "  monitor_id INTEGER NOT NULL REFERENCES " + q + ".monitors(id) ON DELETE CASCADE,"
+                + "  PRIMARY KEY (user_id, monitor_id)"
                 + ")"
         };
 

@@ -32,7 +32,9 @@ public class UserDao {
             pst.setString(1, email);
             ResultSet rs = pst.executeQuery();
             if (rs.next()) {
-                return new User(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5));
+                User u = new User(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5));
+                u.setEmailNotifications(rs.getBoolean("email_notifications"));
+                return u;
             } else {
                 throw new MissingUserException();
             }
@@ -60,7 +62,7 @@ public class UserDao {
     }
 
     public List<User> getUsersByOrganization(Connection conn) throws SQLException {
-        String sql = "SELECT id, email, role FROM users";
+        String sql = "SELECT id, email, role, email_notifications FROM users";
         List<User> users = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -69,6 +71,7 @@ public class UserDao {
                 u.setId(rs.getInt("id"));
                 u.setEmail(rs.getString("email"));
                 u.setRole(rs.getString("role"));
+                u.setEmailNotifications(rs.getBoolean("email_notifications"));
                 users.add(u);
             }
         }
@@ -79,6 +82,15 @@ public class UserDao {
         String sql = "UPDATE users SET role = ? WHERE id = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, role);
+            ps.setInt(2, userId);
+            ps.executeUpdate();
+        }
+    }
+
+    public void updateEmailNotifications(Connection conn, int userId, boolean enabled) throws SQLException {
+        String sql = "UPDATE users SET email_notifications = ? WHERE id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setBoolean(1, enabled);
             ps.setInt(2, userId);
             ps.executeUpdate();
         }

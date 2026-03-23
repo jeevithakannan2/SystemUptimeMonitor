@@ -96,7 +96,8 @@ public class AuthResource {
 
         String json = "{\"role\":\"" + user.getRole()
                 + "\",\"email\":\"" + user.getEmail()
-                + "\",\"organization\":\"" + user.getOrganization() + "\"}";
+                + "\",\"organization\":\"" + user.getOrganization()
+                + "\",\"email_notifications\":" + user.isEmailNotifications() + "}";
 
         return Response.ok(json, MediaType.APPLICATION_JSON)
                 .cookie(tokenCookie).build();

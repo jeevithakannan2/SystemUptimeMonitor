@@ -10,6 +10,8 @@ import {
   History,
   CheckCircle2,
   Loader2,
+  Bell,
+  BellOff,
 } from 'lucide-react';
 
 import {
@@ -21,9 +23,13 @@ import {
   resolveIncident,
   getMonitorHistory,
   getStatus,
+  getSubscriptions,
+  subscribeMonitor,
+  unsubscribeMonitor,
 } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import type { Monitor, Incident, MonitorAudit, MonitorStatus } from '@/types';
+import { cn } from '@/lib/utils';
 
 import { GlassCard } from '@/components/GlassCard';
 import { StatCard } from '@/components/StatCard';
@@ -106,6 +112,7 @@ export default function Dashboard() {
   const [historyData, setHistoryData] = useState<MonitorAudit[]>([]);
   const [historyMonitorName, setHistoryMonitorName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [subscribedMonitors, setSubscribedMonitors] = useState<Set<number>>(new Set());
 
   /* ── Data fetching ───────────────────────────────────────────── */
 
@@ -142,14 +149,23 @@ export default function Dashboard() {
     }
   }, [user?.organization]);
 
+  const fetchSubscriptions = useCallback(async () => {
+    try {
+      const data = await getSubscriptions();
+      setSubscribedMonitors(new Set(data.subscribed_monitors));
+    } catch {
+      // silently fail — not critical
+    }
+  }, []);
+
   useEffect(() => {
     async function init() {
       setLoading(true);
-      await Promise.all([fetchMonitors(), fetchIncidents(), fetchUptime()]);
+      await Promise.all([fetchMonitors(), fetchIncidents(), fetchUptime(), fetchSubscriptions()]);
       setLoading(false);
     }
     init();
-  }, [fetchMonitors, fetchIncidents, fetchUptime]);
+  }, [fetchMonitors, fetchIncidents, fetchUptime, fetchSubscriptions]);
 
   // Poll incidents every 5 s
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
@@ -209,6 +225,23 @@ export default function Dashboard() {
       toast.error('Failed to update monitor');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleToggleSubscription = async (monitorId: number) => {
+    const isSubscribed = subscribedMonitors.has(monitorId);
+    try {
+      if (isSubscribed) {
+        await unsubscribeMonitor(monitorId);
+        setSubscribedMonitors((prev) => { const next = new Set(prev); next.delete(monitorId); return next; });
+        toast.success('Unsubscribed from notifications');
+      } else {
+        await subscribeMonitor(monitorId);
+        setSubscribedMonitors((prev) => new Set(prev).add(monitorId));
+        toast.success('Subscribed to notifications');
+      }
+    } catch {
+      toast.error('Failed to update subscription');
     }
   };
 
@@ -361,6 +394,18 @@ export default function Dashboard() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleToggleSubscription(m.id)}
+                          className={cn(
+                            'p-1.5 rounded-lg transition-colors',
+                            subscribedMonitors.has(m.id)
+                              ? 'text-primary hover:bg-primary/10'
+                              : 'text-muted-foreground hover:bg-accent/60'
+                          )}
+                          title={subscribedMonitors.has(m.id) ? 'Unsubscribe from notifications' : 'Subscribe to notifications'}
+                        >
+                          {subscribedMonitors.has(m.id) ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                        </button>
                         <Button variant="ghost" size="icon" onClick={() => openEdit(m)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
