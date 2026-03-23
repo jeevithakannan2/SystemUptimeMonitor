@@ -22,6 +22,9 @@ services:
         condition: service_healthy
     ports:
       - "9090:8080"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     environment:
       DB_HOST: db
       DB_PORT: 5432
