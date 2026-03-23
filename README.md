@@ -43,6 +43,19 @@ cp target/SystemUptimeMonitor-1.0-SNAPSHOT.war $CATALINA_HOME/webapps/ROOT.war
 $CATALINA_HOME/bin/startup.sh
 ```
 
+### Email Notifications (Optional)
+
+```bash
+# Add SMTP credentials to .env for email notifications:
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=alerts@example.com
+SMTP_PASSWORD=app-password
+SMTP_FROM=alerts@example.com
+```
+
+Email notifications are optional. If `SMTP_HOST` is not set, the app runs normally without sending emails. Users can enable notifications per-user and subscribe to individual monitors.
+
 ### Database Management
 
 ```bash

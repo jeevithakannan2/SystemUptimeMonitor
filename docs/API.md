@@ -36,7 +36,8 @@ GET /api/login
 {
   "role": "admin",
   "email": "user@example.com",
-  "organization": "example.com"
+  "organization": "example.com",
+  "email_notifications": false
 }
 ```
 
@@ -594,3 +595,86 @@ GET /api/organizations
 | Status | Message |
 |--------|---------|
 | 500 | Failed to load organizations |
+
+---
+
+## Notifications
+
+### Update Notification Preference
+
+Toggles global email notification setting for the authenticated user.
+
+```
+PUT /api/notification_preference
+```
+
+**Auth:** Operator
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `enabled` | string | Yes | `"true"` or `"false"` |
+
+**Success Response (200):**
+
+```json
+{ "email_notifications": true }
+```
+
+### Subscribe to Monitor Notifications
+
+Subscribe to email notifications for a specific monitor.
+
+```
+POST /api/subscribe_monitor
+```
+
+**Auth:** Operator
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `monitor_id` | string | Yes | Monitor ID to subscribe to |
+
+**Success Response (200):**
+
+```json
+{ "message": "Subscribed" }
+```
+
+### Unsubscribe from Monitor Notifications
+
+```
+DELETE /api/unsubscribe_monitor
+```
+
+**Auth:** Operator
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `monitor_id` | string | Yes | Monitor ID to unsubscribe from |
+
+> Parameters sent as `application/x-www-form-urlencoded` body.
+
+**Success Response (200):**
+
+```json
+{ "message": "Unsubscribed" }
+```
+
+### Get Notification Subscriptions
+
+Returns the user's global notification preference and list of subscribed monitor IDs.
+
+```
+GET /api/subscriptions
+```
+
+**Auth:** Operator
+
+**Success Response (200):**
+
+```json
+{
+  "email_notifications": true,
+  "subscribed_monitors": [1, 3, 5]
+}
+```

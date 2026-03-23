@@ -58,6 +58,10 @@ All paths are under `/api` (set by `@ApplicationPath("/api")` in `JerseyConfig`)
 | `/api/resolve_incident` | `IncidentResource` | PUT | Operator |
 | `/api/status` | `PublicResource` | GET | None (public) |
 | `/api/organizations` | `PublicResource` | GET | None (public) |
+| `/api/notification_preference` | `NotificationResource` | PUT | Operator |
+| `/api/subscribe_monitor` | `NotificationResource` | POST | Operator |
+| `/api/unsubscribe_monitor` | `NotificationResource` | DELETE | Operator |
+| `/api/subscriptions` | `NotificationResource` | GET | Operator |
 
 ## Database & Connection Patterns
 
@@ -99,6 +103,16 @@ Keys in the internal maps use `"organization:monitorId"` format to avoid ID coll
 - **Organization listing:** `/api/organizations` returns a list of all registered organizations.
 - **User management:** `/api/users` returns all users in the authenticated admin's org. `/api/update_role` allows admins to change user roles within their org.
 
+## Email Notifications
+
+Optional SMTP-based email notifications for incident events.
+
+- **Configuration:** `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM` env vars. If `SMTP_HOST` is empty, emails are silently disabled.
+- **Per-user toggle:** `email_notifications` boolean on the `users` table. Toggled via `PUT /api/notification_preference`.
+- **Per-monitor subscription:** `monitor_subscriptions` join table (user_id, monitor_id). Users subscribe/unsubscribe via `POST /api/subscribe_monitor` and `DELETE /api/unsubscribe_monitor`.
+- **Trigger:** `IncidentService` sends emails after creating or resolving an incident. Queries subscribed users with `email_notifications = true` via `MonitorSubscriptionDao.getSubscribedEmails()`.
+- **Async:** `EmailService` uses a single-thread `ExecutorService` — email failures never block incident processing.
+
 ## Known Issues
 
 - `MonitorService.hasUnresolvedIncident()` has inverted logic — returns `true` when there are **no** unresolved incidents (`incident == null`).
@@ -121,7 +135,7 @@ scripts/reinit_db.sh all                # Clear ALL data including users and mon
 
 Deploy `target/SystemUptimeMonitor-1.0-SNAPSHOT.war` to Tomcat 9. Place `.env` file in Tomcat's working directory or set `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USERNAME`/`DB_PASSWORD` as environment variables.
 
-Dependencies: `javax.servlet-api` (provided), `postgresql` (JDBC driver), `jersey-container-servlet`, `jersey-media-json-jackson`, `jersey-hk2`, `jackson-databind`, `jbcrypt` (password hashing), JUnit 5 (test).
+Dependencies: `javax.servlet-api` (provided), `postgresql` (JDBC driver), `jersey-container-servlet`, `jersey-media-json-jackson`, `jersey-hk2`, `jackson-databind`, `jbcrypt` (password hashing), `javax.mail` (JavaMail 1.6.2), JUnit 5 (test).
 
 ## Frontend (React SPA)
 

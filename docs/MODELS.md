@@ -16,6 +16,7 @@ Represents a registered user within an organization.
 | `role` | `String` | `admin`, `operator`, or `viewer` |
 | `organization` | `String` | Organization name (derived from email domain) |
 | `loggedIn` | `long` | Timestamp of last login (used for token expiration) |
+| `emailNotifications` | `boolean` | Whether email notifications are globally enabled for this user (default: false) |
 
 **Constructors:**
 - `User()` — no-arg constructor (required for Jersey/Jackson deserialization)
@@ -148,11 +149,12 @@ Each org gets an isolated schema (e.g., `org_example_com`) with these tables:
 
 ```sql
 CREATE TABLE users (
-    id           SERIAL       PRIMARY KEY,
-    email        VARCHAR(255) NOT NULL UNIQUE,
-    password     VARCHAR(255) NOT NULL,
-    role         VARCHAR(50)  NOT NULL,
-    organization VARCHAR(255) NOT NULL
+    id                  SERIAL       PRIMARY KEY,
+    email               VARCHAR(255) NOT NULL UNIQUE,
+    password            VARCHAR(255) NOT NULL,
+    role                VARCHAR(50)  NOT NULL,
+    organization        VARCHAR(255) NOT NULL,
+    email_notifications BOOLEAN      NOT NULL DEFAULT FALSE
 );
 ```
 
@@ -224,6 +226,16 @@ CREATE TABLE status_codes (
 );
 ```
 
+#### monitor_subscriptions
+
+```sql
+CREATE TABLE monitor_subscriptions (
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    monitor_id INTEGER NOT NULL REFERENCES monitors(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, monitor_id)
+);
+```
+
 #### monitor_audits
 
 ```sql
@@ -248,8 +260,10 @@ organizations (public)
             │
             ├── users
             │     ├──< invites        (created_by → users.id)
+            │     ├──< monitor_subscriptions (user_id, ON DELETE CASCADE)
             │     └──< monitors       (created_by → users.id)
             │             ├──< status_codes     (monitor_id, ON DELETE CASCADE)
+            │             ├──< monitor_subscriptions (monitor_id, ON DELETE CASCADE)
             │             ├──< monitor_audits   (monitor_id, no FK)
             │             └──< monitor_runs     (monitor_id, ON DELETE CASCADE)
             │                     └──< incidents (monitor_run_id, ON DELETE CASCADE)
@@ -263,6 +277,8 @@ organizations (public)
 |--------|-------|-----------|
 | `monitors` | `monitor_runs` | CASCADE |
 | `monitors` | `status_codes` | CASCADE |
+| `monitors` | `monitor_subscriptions` | CASCADE |
+| `users` | `monitor_subscriptions` | CASCADE |
 | `monitor_runs` | `incidents` | CASCADE |
 | `monitors` | `monitor_audits` | No FK (audit preserved) |
 
