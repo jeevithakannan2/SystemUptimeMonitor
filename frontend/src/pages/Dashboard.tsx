@@ -41,13 +41,6 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -684,30 +677,24 @@ function MonitorForm({ form, setForm }: MonitorFormProps) {
           />
         </div>
 
-        <div className="space-y-1.5">
-          <Label>Enabled</Label>
-          <Select
-            value={form.enabled}
-            onValueChange={(v) => update('enabled', v)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="true">Yes</SelectItem>
-              <SelectItem value="false">No</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-6 pt-6">
+          <div className="flex items-center gap-2.5">
+            <Switch
+              id="mon-enabled"
+              checked={form.enabled === 'true'}
+              onCheckedChange={(checked) => update('enabled', String(checked))}
+            />
+            <Label htmlFor="mon-enabled">Enabled</Label>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <Switch
+              id="mon-public"
+              checked={form.is_public === 'true'}
+              onCheckedChange={(checked) => update('is_public', String(checked))}
+            />
+            <Label htmlFor="mon-public">Public</Label>
+          </div>
         </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <Switch
-          id="mon-public"
-          checked={form.is_public === 'true'}
-          onCheckedChange={(checked) => update('is_public', String(checked))}
-        />
-        <Label htmlFor="mon-public">Public</Label>
       </div>
     </div>
   );
