@@ -193,7 +193,7 @@ export default function Dashboard() {
     setSubmitting(true);
     try {
       await updateMonitor({
-        id: String(editId),
+        monitor_id: String(editId),
         name: form.name,
         target_url: form.target_url,
         check_interval: form.check_interval,
