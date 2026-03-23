@@ -69,7 +69,7 @@ public class PublicResource {
                     json.append("{\"id\":").append(incident.getId())
                         .append(",\"monitor_run_id\":").append(incident.getMonitorRunId())
                         .append(",\"down_time\":\"").append(new Timestamp(incident.getDownTime())).append("\"")
-                        .append(",\"resolved_time\":\"").append(incident.isResolved() ? new Timestamp(incident.getResolvedTime()) : "null").append("\"")
+                        .append(",\"resolved_time\":").append(incident.isResolved() ? "\"" + new Timestamp(incident.getResolvedTime()) + "\"" : "null")
                         .append(",\"status_code\":").append(incident.getStatusCode())
                         .append("}");
                     if (j < incidents.size() - 1) {
