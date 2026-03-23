@@ -10,7 +10,7 @@ npm run build -- --outDir dist
 cd ..
 
 echo "── Building WAR ──"
-./mvnw clean package -DskipTests -q
+MAVEN_OPTS="-Djansi.tmpdir=${HOME}/.tmp" ./mvnw clean package -DskipTests -q
 
 echo "── Starting services ──"
 docker compose up --build "$@"
