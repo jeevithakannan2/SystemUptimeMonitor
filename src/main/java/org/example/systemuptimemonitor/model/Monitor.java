@@ -12,6 +12,7 @@ public class Monitor {
     private long createdTime;
     private int failureCount;
     private boolean enabled;
+    private boolean isPublic;
     private ArrayList<Integer> statusCodes;
 
     public Monitor(int id, String name, String targetUrl, int checkInterval, long createdTime, int createdBy, int failureCount, String organization, boolean enabled) {
@@ -111,6 +112,14 @@ public class Monitor {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public boolean isPublic() {
+        return isPublic;
+    }
+
+    public void setPublic(boolean isPublic) {
+        this.isPublic = isPublic;
     }
 
     public ArrayList<Integer> getStatusCodes() {

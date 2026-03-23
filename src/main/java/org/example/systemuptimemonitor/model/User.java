@@ -8,6 +8,9 @@ public class User {
     private String organization;
     private long loggedIn;
 
+    public User() {
+    }
+
     public User(int id, String email, String password, String role, String organization) {
         this.id = id;
         this.email = email;

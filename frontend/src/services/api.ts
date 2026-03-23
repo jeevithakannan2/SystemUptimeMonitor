@@ -89,9 +89,23 @@ export async function deleteUser(delete_email: string): Promise<void> {
   await api.delete('/delete_user', { data: params({ delete_email }) });
 }
 
+export async function getUsers(): Promise<{ users: User[] }> {
+  const { data } = await api.get('/users');
+  return data;
+}
+
+export async function updateUserRole(user_id: number, role: string): Promise<void> {
+  await api.put('/update_role', params({ user_id, role }));
+}
+
 // Public status
 export async function getStatus(org: string): Promise<{ organization: string; monitors: StatusMonitor[] }> {
   const { data } = await api.get('/status', { params: { org } });
+  return data;
+}
+
+export async function getOrganizations(): Promise<{ organizations: string[] }> {
+  const { data } = await api.get('/organizations');
   return data;
 }
 

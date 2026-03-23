@@ -152,4 +152,14 @@ public class MonitorService {
             return incident == null;
         }
     }
+
+    public List<Monitor> getPublicMonitorsByOrganization(String organization) throws SQLException {
+        try (Connection connection = DBManager.getConnection(organization)) {
+            List<Monitor> monitors = monitorDao.getPublicMonitorsByOrganization(connection, organization);
+            for (Monitor monitor : monitors) {
+                monitor.setStatusCodes(statusCodeDao.getStatusCodes(connection, monitor.getId()));
+            }
+            return monitors;
+        }
+    }
 }

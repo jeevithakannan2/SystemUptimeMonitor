@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Activity, ArrowLeft, Clock, Globe, Loader2, RefreshCw } from 'lucide-react';
+import { Activity, ArrowLeft, Building2, Clock, Globe, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { getStatus } from '@/services/api';
+import { getStatus, getOrganizations } from '@/services/api';
 import type { StatusMonitor, StatusIncident, MonitorStatus, UptimeLevel } from '@/types';
 import { GlassCard } from '@/components/GlassCard';
 import { StatusDot } from '@/components/StatusDot';
@@ -56,6 +56,8 @@ export function Status() {
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [organizations, setOrganizations] = useState<string[]>([]);
+  const [orgsLoading, setOrgsLoading] = useState(false);
 
   const fetchStatus = useCallback(
     async (organization: string, silent = false) => {
@@ -73,6 +75,23 @@ export function Status() {
     },
     [],
   );
+
+  const fetchOrganizations = useCallback(async () => {
+    setOrgsLoading(true);
+    try {
+      const data = await getOrganizations();
+      setOrganizations(data.organizations);
+    } catch {
+      toast.error('Failed to load organizations');
+    } finally {
+      setOrgsLoading(false);
+    }
+  }, []);
+
+  // Fetch org list on mount
+  useEffect(() => {
+    fetchOrganizations();
+  }, [fetchOrganizations]);
 
   // Auto-fetch for authenticated users
   useEffect(() => {
@@ -99,6 +118,20 @@ export function Status() {
     }
     setOrg(trimmed);
     fetchStatus(trimmed);
+  }
+
+  function handleSelectOrg(orgName: string) {
+    setOrg(orgName);
+    setOrgInput(orgName);
+    fetchStatus(orgName);
+  }
+
+  function handleBackToOrgs() {
+    setOrg('');
+    setMonitors([]);
+    setLastUpdated(null);
+    setOrgInput('');
+    if (intervalRef.current) clearInterval(intervalRef.current);
   }
 
   return (
@@ -163,31 +196,75 @@ export function Status() {
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           )}
+          {org && (
+            <Button variant="outline" size="sm" onClick={handleBackToOrgs}>
+              <ArrowLeft className="h-4 w-4" />
+              <span className="ml-1">All organizations</span>
+            </Button>
+          )}
         </PageHeader>
 
-        {/* ── Org input for unauthenticated users ── */}
-        {!isAuthenticated && !org && (
-          <GlassCard className="p-6">
-            <p className="text-sm text-muted-foreground mb-3">Enter an organization name to view its service status.</p>
-            <form
-              className="flex gap-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleViewStatus();
-              }}
-            >
-              <Input
-                placeholder="Organization name"
-                value={orgInput}
-                onChange={(e) => setOrgInput(e.target.value)}
-                className="max-w-sm"
-              />
-              <Button type="submit" disabled={loading}>
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
-                <span className="ml-2">View Status</span>
-              </Button>
-            </form>
-          </GlassCard>
+        {/* ── Org selection for when no org is loaded ── */}
+        {!org && (
+          <>
+            <GlassCard className="p-6">
+              <p className="text-sm text-muted-foreground mb-3">Enter an organization name to view its service status.</p>
+              <form
+                className="flex gap-3"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleViewStatus();
+                }}
+              >
+                <Input
+                  placeholder="Organization name"
+                  value={orgInput}
+                  onChange={(e) => setOrgInput(e.target.value)}
+                  className="max-w-sm"
+                />
+                <Button type="submit" disabled={loading}>
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                  <span className="ml-2">View Status</span>
+                </Button>
+              </form>
+            </GlassCard>
+
+            {/* ── Organization cards grid ── */}
+            {orgsLoading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {!orgsLoading && organizations.length > 0 && (
+              <div>
+                <h2 className="font-heading text-sm font-semibold text-muted-foreground mb-3">
+                  Or choose an organization
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {organizations.map((orgName) => (
+                    <GlassCard
+                      key={orgName}
+                      className="p-5 cursor-pointer transition-all hover:shadow-warm hover:scale-[1.02]"
+                      onClick={() => handleSelectOrg(orgName)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Building2 className="h-5 w-5 text-primary shrink-0" />
+                        <span className="font-heading font-bold truncate">{orgName}</span>
+                      </div>
+                    </GlassCard>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!orgsLoading && organizations.length === 0 && (
+              <GlassCard className="flex flex-col items-center justify-center py-12 text-center">
+                <Building2 className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">No organizations found.</p>
+              </GlassCard>
+            )}
+          </>
         )}
 
         {/* ── Loading state ── */}

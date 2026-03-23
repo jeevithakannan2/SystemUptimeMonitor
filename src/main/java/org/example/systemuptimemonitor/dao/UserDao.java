@@ -7,6 +7,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -54,6 +56,31 @@ public class UserDao {
             pst.setString(1, email);
             ResultSet rs = pst.executeQuery();
             return rs.next();
+        }
+    }
+
+    public List<User> getUsersByOrganization(Connection conn) throws SQLException {
+        String sql = "SELECT id, email, role FROM users";
+        List<User> users = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                User u = new User();
+                u.setId(rs.getInt("id"));
+                u.setEmail(rs.getString("email"));
+                u.setRole(rs.getString("role"));
+                users.add(u);
+            }
+        }
+        return users;
+    }
+
+    public void updateUserRole(Connection conn, int userId, String role) throws SQLException {
+        String sql = "UPDATE users SET role = ? WHERE id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, role);
+            ps.setInt(2, userId);
+            ps.executeUpdate();
         }
     }
 }

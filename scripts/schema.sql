@@ -47,7 +47,8 @@ CREATE TABLE IF NOT EXISTS organizations (
 --     created_by     INTEGER       NOT NULL REFERENCES <org_schema>.users(id),
 --     failure_count  INTEGER       NOT NULL DEFAULT 0,
 --     organization   VARCHAR(255)  NOT NULL,
---     enabled        BOOLEAN       NOT NULL DEFAULT TRUE
+--     enabled        BOOLEAN       NOT NULL DEFAULT TRUE,
+--     is_public      BOOLEAN       NOT NULL DEFAULT FALSE
 -- );
 --
 -- CREATE TABLE IF NOT EXISTS <org_schema>.monitor_runs (

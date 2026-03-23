@@ -1,4 +1,5 @@
 export interface User {
+  id?: number;
   email: string;
   role: 'admin' | 'operator' | 'viewer';
   organization: string;
@@ -14,6 +15,7 @@ export interface Monitor {
   organization: string;
   status_codes: number[];
   enabled: boolean;
+  is_public: boolean;
 }
 
 export interface Incident {

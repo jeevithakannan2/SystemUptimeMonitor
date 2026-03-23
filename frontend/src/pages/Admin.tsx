@@ -1,13 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { UserPlus, Trash2, Copy, Clock, Loader2, Link as LinkIcon } from "lucide-react";
+import { UserPlus, Trash2, Copy, Clock, Loader2, Link as LinkIcon, Users } from "lucide-react";
 
-import { generateInviteLink, deleteUser } from "@/services/api";
+import { generateInviteLink, deleteUser, getUsers, updateUserRole } from "@/services/api";
+import type { User } from "@/types";
 import { GlassCard } from "@/components/GlassCard";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +30,55 @@ export default function Admin() {
   const [inviteUrl, setInviteUrl] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [inviteLoading, setInviteLoading] = useState(false);
+
+  // ── Team Members state ──
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(false);
+
+  const fetchUsers = useCallback(async () => {
+    setUsersLoading(true);
+    try {
+      const { users } = await getUsers();
+      setUsers(users);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to load users");
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleRoleChange = useCallback(async (userId: number, newRole: string) => {
+    try {
+      await updateUserRole(userId, newRole);
+      toast.success("Role updated");
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to update role");
+    }
+  }, [fetchUsers]);
+
+  const handleDeleteTeamMember = useCallback(async () => {
+    if (!deleteTarget) return;
+    setDeletingUser(true);
+    try {
+      await deleteUser(deleteTarget.email);
+      toast.success(`User ${deleteTarget.email} removed`);
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to remove user");
+    } finally {
+      setDeletingUser(false);
+      setDeleteDialogOpen(false);
+      setDeleteTarget(null);
+    }
+  }, [deleteTarget, fetchUsers]);
 
   // ── Remove-user state ──
   const [email, setEmail] = useState("");
@@ -179,6 +232,108 @@ export default function Admin() {
             </div>
           </div>
         )}
+      </GlassCard>
+
+      {/* ── Team Members ── */}
+      <GlassCard className="p-6 space-y-5">
+        <div>
+          <h2 className="font-heading text-lg font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Team Members
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            View and manage users in your organization.
+          </p>
+        </div>
+
+        {usersLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : users.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">No users found.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((user) => (
+                <TableRow key={user.id ?? user.email}>
+                  <TableCell className="font-medium">{user.email}</TableCell>
+                  <TableCell>
+                    {user.role === "admin" ? (
+                      <Badge>Admin</Badge>
+                    ) : (
+                      <Select
+                        value={user.role}
+                        onValueChange={(value) =>
+                          user.id != null && handleRoleChange(user.id, value)
+                        }
+                      >
+                        <SelectTrigger className="w-[130px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="operator">Operator</SelectItem>
+                          <SelectItem value="viewer">Viewer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {user.role !== "admin" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setDeleteTarget(user);
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm user removal</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to remove{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.email}
+              </span>
+              ? This action cannot be undone.
+            </p>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteTeamMember}
+                disabled={deletingUser}
+              >
+                {deletingUser && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Confirm Remove
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </GlassCard>
 
       {/* ── Remove User ── */}

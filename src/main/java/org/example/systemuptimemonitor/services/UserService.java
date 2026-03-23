@@ -12,6 +12,8 @@ import org.example.systemuptimemonitor.util.SchemaManager;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -97,6 +99,27 @@ public class UserService {
     public void deleteUser(String email, String organization) throws SQLException {
         try (Connection connection = DBManager.getConnection(organization)) {
             userDao.deleteUser(connection, email);
+        }
+    }
+
+    public List<User> getUsers(String organization) throws Exception {
+        try (Connection connection = DBManager.getConnection(organization)) {
+            return userDao.getUsersByOrganization(connection);
+        }
+    }
+
+    public void updateUserRole(int userId, String role, String organization) throws Exception {
+        try (Connection connection = DBManager.getConnection(organization)) {
+            try {
+                connection.setAutoCommit(false);
+                userDao.updateUserRole(connection, userId, role);
+                connection.commit();
+            } catch (Exception e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
+            }
         }
     }
 }

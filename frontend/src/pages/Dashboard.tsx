@@ -20,7 +20,9 @@ import {
   deleteMonitor,
   resolveIncident,
   getMonitorHistory,
+  getStatus,
 } from '@/services/api';
+import { useAuth } from '@/hooks/useAuth';
 import type { Monitor, Incident, MonitorAudit, MonitorStatus } from '@/types';
 
 import { GlassCard } from '@/components/GlassCard';
@@ -47,6 +49,7 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import {
   Table,
   TableBody,
@@ -81,15 +84,19 @@ const EMPTY_FORM = {
   expected_status_codes: '200',
   failure_count: '3',
   enabled: 'true',
+  is_public: 'false',
 };
 
 /* ─── Component ────────────────────────────────────────────────── */
 
 export default function Dashboard() {
 
+  const { user } = useAuth();
+
   const [monitors, setMonitors] = useState<Monitor[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
+  const [avgUptime, setAvgUptime] = useState<number | null>(null);
 
   /* Modal state */
   const [createOpen, setCreateOpen] = useState(false);
@@ -127,14 +134,29 @@ export default function Dashboard() {
     }
   }, []);
 
+  const fetchUptime = useCallback(async () => {
+    if (!user?.organization) return;
+    try {
+      const res = await getStatus(user.organization);
+      if (res.monitors.length > 0) {
+        const sum = res.monitors.reduce((acc, m) => acc + m.uptime, 0);
+        setAvgUptime(sum / res.monitors.length);
+      } else {
+        setAvgUptime(null);
+      }
+    } catch {
+      /* silent */
+    }
+  }, [user?.organization]);
+
   useEffect(() => {
     async function init() {
       setLoading(true);
-      await Promise.all([fetchMonitors(), fetchIncidents()]);
+      await Promise.all([fetchMonitors(), fetchIncidents(), fetchUptime()]);
       setLoading(false);
     }
     init();
-  }, [fetchMonitors, fetchIncidents]);
+  }, [fetchMonitors, fetchIncidents, fetchUptime]);
 
   // Poll incidents every 5 s
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
@@ -160,6 +182,7 @@ export default function Dashboard() {
         expected_status_codes: form.expected_status_codes,
         failure_count: form.failure_count,
         enabled: form.enabled,
+        is_public: form.is_public,
       });
       toast.success('Monitor created');
       setCreateOpen(false);
@@ -184,6 +207,7 @@ export default function Dashboard() {
         expected_status_codes: form.expected_status_codes,
         failure_count: form.failure_count,
         enabled: form.enabled,
+        is_public: form.is_public,
       });
       toast.success('Monitor updated');
       setEditOpen(false);
@@ -234,6 +258,7 @@ export default function Dashboard() {
       expected_status_codes: m.status_codes.join(','),
       failure_count: String(m.failure_count),
       enabled: String(m.enabled),
+      is_public: String(m.is_public),
     });
     setEditOpen(true);
   };
@@ -274,7 +299,7 @@ export default function Dashboard() {
           value={activeIncidents}
           accent="destructive"
         />
-        <StatCard icon={Clock} label="Avg Uptime" value="—" />
+        <StatCard icon={Clock} label="Avg Uptime" value={avgUptime !== null ? `${avgUptime.toFixed(1)}%` : '—'} />
         <StatCard
           icon={CheckCircle2}
           label="Monitors Enabled"
@@ -326,7 +351,10 @@ export default function Dashboard() {
                     <TableCell>
                       <StatusDot status={getMonitorStatus(m, incidents)} />
                     </TableCell>
-                    <TableCell className="font-semibold">{m.name}</TableCell>
+                    <TableCell className="font-semibold">
+                      {m.name}
+                      {m.is_public && <Badge variant="secondary" className="ml-2 text-xs">Public</Badge>}
+                    </TableCell>
                     <TableCell className="max-w-[200px] truncate text-muted-foreground">
                       {m.target_url}
                     </TableCell>
@@ -671,6 +699,15 @@ function MonitorForm({ form, setForm }: MonitorFormProps) {
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Switch
+          id="mon-public"
+          checked={form.is_public === 'true'}
+          onCheckedChange={(checked) => update('is_public', String(checked))}
+        />
+        <Label htmlFor="mon-public">Public</Label>
       </div>
     </div>
   );
