@@ -144,12 +144,12 @@ frontend/src/
 ```bash
 cd frontend
 npm install            # Install dependencies
-npm run dev            # Start dev server on :3000 (proxies /api/* → :8080)
+npm run dev            # Start dev server on :5173 (proxies /api/* → :9090)
 npm run build          # Production build → src/main/webapp/
 ```
 
 ### API Proxy
-Vite dev server proxies `/api/*` to `localhost:8080`, stripping the `/api` prefix. Pages call `api.get('/api/monitors')` which becomes `GET /monitors` on Tomcat.
+Vite dev server proxies `/api/*` to `localhost:9090`, stripping the `/api` prefix. Pages call `api.get('/api/monitors')` which becomes `GET /monitors` on Tomcat.
 
 ### Auth Pattern
 Cookie-based auth using the existing backend token system. `useAuth` hook provides `user`, `isAuthenticated`, `isAdmin`, `isOperator`, `logout`. Protected routes are guarded in `App.tsx` router config.

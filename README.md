@@ -22,7 +22,7 @@ cd frontend && npm install && npm run build && cd ..
 ./mvnw clean package -DskipTests
 docker-compose up --build
 
-# App available at http://localhost:8080
+# App available at http://localhost:9090
 ```
 
 ### Manual Setup
@@ -129,9 +129,9 @@ scripts/            # Database management scripts
 ```bash
 cd frontend
 npm install                # Install dependencies
-npm run dev                # Start dev server on :3000 (proxies API to :8080)
+npm run dev                # Start dev server on :5173 (proxies API to :9090)
 npm run build              # Production build → src/main/webapp/
 npm run lint               # Lint with ESLint
 ```
 
-The Vite dev server proxies `/api/*` requests to `localhost:8080` (Tomcat), stripping the `/api` prefix.
+The Vite dev server proxies `/api/*` requests to `localhost:9090` (Tomcat), stripping the `/api` prefix.
