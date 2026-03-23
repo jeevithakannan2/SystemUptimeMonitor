@@ -12,12 +12,14 @@ cp .env.example .env
 # Edit .env with your database credentials:
 #   DB_USERNAME=postgres
 #   DB_PASSWORD=secret
-#   DB_HOST=localhost
-#   DB_PORT=5432
 #   DB_NAME=sysuptimemonitor
 
-# 2. Build and run
-./mvnw clean package
+# 2. Build and run (builds frontend + WAR, starts all services)
+./scripts/start.sh
+
+# Or step by step:
+cd frontend && npm install && npm run build && cd ..
+./mvnw clean package -DskipTests
 docker-compose up --build
 
 # App available at http://localhost:8080
