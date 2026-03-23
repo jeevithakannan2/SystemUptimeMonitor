@@ -55,7 +55,7 @@ scripts/reinit_db.sh all       # Clear ALL data including users and monitors
 | Component | Technology |
 |-----------|-----------|
 | Language | Java 8 |
-| Web Framework | Java Servlet 4.0 (no Spring) |
+| Web Framework | Jersey 2.39.1 (JAX-RS on Servlet 4.0) |
 | Database | PostgreSQL 16 |
 | Frontend | React 18 + TypeScript + Vite |
 | UI Components | Shadcn/ui + Tailwind CSS v4 |
@@ -72,18 +72,19 @@ scripts/reinit_db.sh all       # Clear ALL data including users and monitors
 3. **Monitor** — Operators create HTTP monitors with target URLs, expected status codes, and check intervals.
 4. **Auto-check** — A background scheduler periodically pings each monitor's URL and records results.
 5. **Incidents** — After a configurable number of consecutive failures, an incident is automatically created. It auto-resolves when the service recovers.
-6. **Status Page** — A public endpoint shows all monitors and their uptime for any organization.
+6. **Status Page** — A public status page shows monitors marked as **public** and their uptime for any organization. An organization listing page lets visitors discover all registered organizations.
 
 ## Project Structure
 
 ```
 src/main/java/org/example/systemuptimemonitor/
+├── config/         # JerseyConfig (@ApplicationPath("/api"))
 ├── dao/            # Data access (JDBC + PreparedStatement)
 ├── exceptions/     # Domain-specific exceptions
-├── filter/         # Authentication filters (@WebFilter)
+├── filter/         # JAX-RS ContainerRequestFilters (@AdminAuth, @OperatorAuth)
 ├── model/          # POJOs (User, Monitor, Incident, etc.)
+├── resources/      # JAX-RS resource classes (Auth, Admin, Monitor, Incident, Public)
 ├── services/       # Business logic + transaction management
-├── servlets/       # HTTP endpoints (@WebServlet)
 └── util/           # DBManager, TokenManager, MonitorExecutor, SchemaManager
 
 src/main/webapp/
@@ -130,4 +131,4 @@ npm run build              # Production build → src/main/webapp/
 npm run lint               # Lint with ESLint
 ```
 
-The Vite dev server proxies `/api/*` requests to `localhost:9090` (Tomcat), stripping the `/api` prefix.
+The Vite dev server proxies `/api/*` requests to `localhost:9090` (Tomcat), keeping the `/api` prefix intact (Jersey serves at `/api/*`).

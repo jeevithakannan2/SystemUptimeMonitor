@@ -9,10 +9,10 @@
        │                            │  │  public    │  │ org_acme_com  │  │
        ▼                            │  │  schema    │  │    schema     │  │
   ┌─────────┐   ┌─────────┐   ┌────┤  │           │  │               │  │
-  │ Filters │──▶│Servlets │──▶│Svc │──▶│ orgs table│  │ users         │  │
-  │ (auth)  │   │(1 per   │   │    │  │           │  │ monitors      │  │
-  └─────────┘   │endpoint)│   └────┤  └───────────┘  │ incidents     │  │
-                └─────────┘     ▲   │                 │ monitor_runs  │  │
+  │JAX-RS   │──▶│Resources│──▶│Svc │──▶│ orgs table│  │ users         │  │
+  │Filters  │   │(Jersey) │   │    │  │           │  │ monitors      │  │
+  └─────────┘   └─────────┘   └────┤  └───────────┘  │ incidents     │  │
+                                ▲   │                 │ monitor_runs  │  │
                                 │   │  ┌───────────┐  │ invites       │  │
                             ┌───┴─┐ │  │org_foo_io │  │ status_codes  │  │
                             │DAO  │ │  │  schema   │  │ monitor_audits│  │
@@ -27,23 +27,25 @@
 Every HTTP request follows this path:
 
 ```
-Client → Filter → Servlet → Service → DAO → PostgreSQL
+Client → JAX-RS Filter → Resource → Service → DAO → PostgreSQL
 ```
 
-1. **Filter** (`AdminAuthenticationFilter` or `OperatorAuthenticationFilter`):
-   - Extracts `token` cookie
+1. **Filter** (`AdminAuthFilter` or `OperatorAuthFilter`):
+   - JAX-RS `ContainerRequestFilter` implementations bound via `@NameBinding` annotations (`@AdminAuth`, `@OperatorAuth`) applied at the resource class level
+   - Extracts `token` cookie via `containerRequestContext.getCookies().get("token")`
    - Validates via `TokenManager.isValid(token)` (checks existence + 1-hour TTL)
    - Retrieves `User` from `TokenManager.getUser(token)`
    - Checks role (`admin` only, or `operator || admin`)
-   - Sets `req.getSession().setAttribute("user", user)` for downstream access
-   - Returns `403` with `{"error": "Access denied"}` if unauthorized
+   - Sets `containerRequestContext.setProperty("user", user)` for downstream access
+   - Aborts unauthorized requests with `containerRequestContext.abortWith(Response.status(403)...)` returning `{"error": "Access denied"}`
 
-2. **Servlet** (e.g., `CreateMonitor`):
-   - Reads parameters via `req.getParameter()` (GET/POST) or `RequestBodyParser.parse(req)` (PUT/DELETE)
-   - Validates input, extracts user from session
+2. **Resource** (e.g., `MonitorResource`):
+   - JAX-RS resource classes annotated with `@Path("/")` and method-level `@Path` annotations
+   - Reads parameters via `@QueryParam` (GET) and `@FormParam` (POST/PUT/DELETE)
+   - Accesses user from filter via `containerRequestContext.getProperty("user")` (injected via `@Context ContainerRequestContext`)
    - Delegates to the appropriate Service
-   - Writes JSON response via `PrintWriter` (manual string concatenation)
-   - Uses `ErrorResponse.sendJsonError()` for error responses
+   - Returns `javax.ws.rs.core.Response` — Jersey+Jackson auto-serializes to JSON
+   - Five resource classes: `AuthResource`, `AdminResource`, `MonitorResource`, `IncidentResource`, `PublicResource`
 
 3. **Service** (e.g., `MonitorService`):
    - Opens a JDBC connection via `DBManager.getConnection(organization)`
@@ -82,6 +84,10 @@ Data isolation is achieved through **PostgreSQL schemas** — one schema per org
    This means all unqualified table names (e.g., `SELECT * FROM users`) resolve to the org's schema first, then fall back to public.
 
 4. **DAO simplicity** — DAOs never reference schema names. They use plain SQL like `INSERT INTO monitors ...` and the connection's `search_path` routes to the correct schema.
+
+### Public Monitors
+
+Monitors have an `is_public` boolean field. The public status endpoint (`/api/status`) only returns monitors where `is_public = true`, allowing organizations to control which monitors are visible on the public status page.
 
 ### Adding New Tables
 
@@ -126,6 +132,16 @@ if (user.getLoggedIn() + (1_000 * 3_600) > System.currentTimeMillis()) {
 | `admin` | ✅ | ✅ | ✅ |
 | `operator` | ❌ | ✅ | ✅ |
 | `viewer` | ❌ | ❌ | ✅ |
+
+Filters set `containerRequestContext.setProperty("user", user)` for downstream resource access.
+
+## Jersey Configuration
+
+`JerseyConfig` extends `ResourceConfig` with `@ApplicationPath("/api")`. It scans two packages:
+- `org.example.systemuptimemonitor.resources` — JAX-RS resource classes
+- `org.example.systemuptimemonitor.filter` — ContainerRequestFilter implementations
+
+All endpoints are served under the `/api` path prefix. Jersey automatically discovers and registers all annotated classes in these packages.
 
 ## Background Monitor Execution
 
@@ -228,5 +244,5 @@ try {
 | `SchemaManager` | Creates/manages per-org PostgreSQL schemas and tables |
 | `TokenManager` | In-memory UUID token store with 1-hour lazy expiration |
 | `MonitorExecutor` | `@WebListener` that schedules periodic HTTP health checks |
-| `RequestBodyParser` | Parses URL-encoded bodies for PUT/DELETE (Tomcat doesn't auto-parse these) |
+| `RequestBodyParser` | Parses URL-encoded bodies for PUT/DELETE (legacy, unused with Jersey) |
 | `ErrorResponse` | Sends standardized `{"error": "..."}` JSON responses with proper escaping |

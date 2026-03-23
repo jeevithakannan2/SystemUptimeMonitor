@@ -6,10 +6,11 @@ const app = express();
 const PORT = 5173;
 const API_TARGET = process.env.API_TARGET || 'http://localhost:8080';
 
-// Proxy /api/* → backend (keep /api prefix for Jersey)
-app.use('/api', createProxyMiddleware({
+// Proxy /api/* → backend (preserve /api prefix for Jersey)
+app.use(createProxyMiddleware({
   target: API_TARGET,
   changeOrigin: true,
+  pathFilter: '/api',
 }));
 
 // Serve static files

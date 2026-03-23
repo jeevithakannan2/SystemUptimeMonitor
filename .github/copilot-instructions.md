@@ -2,17 +2,18 @@
 
 ## Architecture
 
-Java Servlet 4.0 WAR application (Java 8) for HTTP endpoint uptime monitoring. Three-tier layered architecture:
+Jersey 2.39.1 JAX-RS (javax.ws.rs) WAR application (Java 8) for HTTP endpoint uptime monitoring. Three-tier layered architecture:
 
 ```
-Filters (auth) → Servlets (one per endpoint) → Services (connection + tx) → DAOs (JDBC) → PostgreSQL
+JAX-RS Filters (auth) → Resources (Jersey) → Services (connection + tx) → DAOs (JDBC) → PostgreSQL
 ```
 
-- **Servlets** (`servlets/`): One class per HTTP endpoint, annotated with `@WebServlet`. Read input via `req.getParameter()` (GET/POST) or `RequestBodyParser.parse()` (PUT/DELETE). Delegate to services, write responses via `PrintWriter`.
+- **Resources** (`resources/`): Five JAX-RS resource classes annotated with `@Path`. Read input via `@FormParam` for POST/PUT/DELETE and `@QueryParam` for GET. Return `javax.ws.rs.core.Response`. Jersey auto-serializes POJOs to JSON via jackson-databind.
 - **Services** (`services/`): Own the JDBC `Connection` lifecycle. Open connections via `DBManager.getConnection(organization)` (org-scoped) or `DBManager.getConnection()` (public schema). Manage transactions (`setAutoCommit(false)` / `commit()` / `rollback()`), call DAOs. Instantiate DAOs as `static final` fields.
 - **DAOs** (`dao/`): Receive `Connection` as a method parameter. Use `PreparedStatement` for all SQL. Map `ResultSet` to model POJOs. Use **unqualified table names** — schema resolution is handled by the connection's `search_path`.
 - **Models** (`model/`): Plain POJOs with getters/setters, no annotations or Lombok.
-- **Filters** (`filter/`): `@WebFilter`-based role checks. `AdminAuthenticationFilter` guards admin-only routes; `OperatorAuthenticationFilter` guards operator routes (allows both `operator` and `admin` roles).
+- **Filters** (`filter/`): JAX-RS `ContainerRequestFilter` implementations with custom `@NameBinding` annotations (`@AdminAuth`, `@OperatorAuth`). Applied to resource classes, not URL patterns.
+- **Config** (`config/JerseyConfig.java`): Extends `ResourceConfig` with `@ApplicationPath("/api")`, scans `resources` and `filter` packages.
 
 ## Multi-Tenancy via PostgreSQL Schemas
 
@@ -30,28 +31,33 @@ When adding new tables or queries, **never hardcode schema names** in DAOs. Alwa
 - Token-based auth using in-memory `ConcurrentHashMap<String, User>` in `util/TokenManager`.
 - Tokens are UUIDs stored in HTTP-only secure cookies named `"token"`, with lazy expiration after 1 hour.
 - Three roles: `admin`, `operator`, `viewer`.
-- `AdminAuthenticationFilter` requires `role == "admin"`.
-- `OperatorAuthenticationFilter` allows `role == "operator" || role == "admin"`.
-- Filters set `req.getSession().setAttribute("user", user)` for downstream servlets.
+- `AdminAuthFilter` implements `ContainerRequestFilter`, annotated with `@AdminAuth` (custom `@NameBinding`). Requires `role == "admin"`.
+- `OperatorAuthFilter` implements `ContainerRequestFilter`, annotated with `@OperatorAuth` (custom `@NameBinding`). Allows `role == "operator" || role == "admin"`.
+- Filters set `containerRequestContext.setProperty("user", user)` — resources access via `crc.getProperty("user")`.
 
-## Servlet URL Map
+## API Endpoint Map
 
-| Pattern | Servlet | Method | Auth |
-|---------|---------|--------|------|
-| `/login` | `Login` | GET | None |
-| `/register` | `RegisterUser` | POST | None |
-| `/create` | `CreateUser` | POST | None (invite link) |
-| `/generate_invitelink` | `GenerateInviteLink` | GET | Admin |
-| `/delete_user` | `DeleteUser` | DELETE | Admin |
-| `/create_monitor` | `CreateMonitor` | POST | Operator |
-| `/delete_monitor` | `DeleteMonitor` | DELETE | Operator |
-| `/update_monitor` | `UpdateMonitor` | PUT | Operator |
-| `/monitors` | `GetMonitors` | GET | Operator |
-| `/monitor_history` | `GetMonitorHistory` | GET | Operator |
-| `/incidents` | `GetIncidents` | GET | Operator |
-| `/create_incident` | `CreateIncident` | POST | Operator |
-| `/resolve_incident` | `ResolveIncident` | PUT | Operator |
-| `/status` | `ViewAll` | GET | None (public) |
+All paths are under `/api` (set by `@ApplicationPath("/api")` in `JerseyConfig`).
+
+| Pattern | Resource | Method | Auth |
+|---------|----------|--------|------|
+| `/api/login` | `AuthResource` | GET | None |
+| `/api/register` | `AuthResource` | POST | None |
+| `/api/create` | `AuthResource` | POST | None (invite link) |
+| `/api/generate_invitelink` | `AdminResource` | GET | Admin |
+| `/api/delete_user` | `AdminResource` | DELETE | Admin |
+| `/api/users` | `AdminResource` | GET | Admin |
+| `/api/update_role` | `AdminResource` | PUT | Admin |
+| `/api/create_monitor` | `MonitorResource` | POST | Operator |
+| `/api/delete_monitor` | `MonitorResource` | DELETE | Operator |
+| `/api/update_monitor` | `MonitorResource` | PUT | Operator |
+| `/api/monitors` | `MonitorResource` | GET | Operator |
+| `/api/monitor_history` | `MonitorResource` | GET | Operator |
+| `/api/incidents` | `IncidentResource` | GET | Operator |
+| `/api/create_incident` | `IncidentResource` | POST | Operator |
+| `/api/resolve_incident` | `IncidentResource` | PUT | Operator |
+| `/api/status` | `PublicResource` | GET | None (public) |
+| `/api/organizations` | `PublicResource` | GET | None (public) |
 
 ## Database & Connection Patterns
 
@@ -70,8 +76,8 @@ When adding new tables or queries, **never hardcode schema names** in DAOs. Alwa
 
 ## JSON I/O Convention
 
-- **Input:** `req.getParameter()` for GET/POST. For PUT/DELETE, use `RequestBodyParser.parse(req)` which reads and URL-decodes the request body (Tomcat doesn't auto-parse these methods).
-- **Output:** Manual `PrintWriter` string concatenation — `jackson-core` is in `pom.xml` but unused (`jackson-databind` is not included, so `ObjectMapper` is not available).
+- **Input:** `@FormParam` for POST/PUT/DELETE form-encoded params, `@QueryParam` for GET query params. Jersey natively handles parsing for all HTTP methods — no manual body parsing needed.
+- **Output:** Jersey + Jackson auto-serialization. Resources return `Response.ok(pojoOrMap).build()` and Jackson serializes to JSON automatically. No manual `PrintWriter` string concatenation.
 - **Errors:** Use `ErrorResponse.sendJsonError(resp, statusCode, message)` for standardized JSON error responses.
 
 ## Background Monitor Execution
@@ -88,12 +94,14 @@ Keys in the internal maps use `"organization:monitorId"` format to avoid ID coll
 
 - **Registration:** First user for an org (derived from email domain via `split("@")[1]`) becomes `admin` and triggers per-org schema creation. Subsequent users join via invite links (role set by inviter).
 - **Invite links** expire after 30 seconds and are single-use.
-- **Organization scoping:** Monitors and incidents are scoped to an organization. `ViewAll` (`/status`) is the exception — it's public and shows all orgs.
+- **Organization scoping:** Monitors and incidents are scoped to an organization. `PublicResource` (`/api/status`) is the exception — it's public and shows all orgs' monitors where `is_public = true`.
+- **Public monitors:** The `Monitor` model has an `is_public` boolean field. When true, the monitor appears on the public status page (`/api/status?org=X`). Only public monitors are returned by `PublicResource`.
+- **Organization listing:** `/api/organizations` returns a list of all registered organizations.
+- **User management:** `/api/users` returns all users in the authenticated admin's org. `/api/update_role` allows admins to change user roles within their org.
 
 ## Known Issues
 
 - `MonitorService.hasUnresolvedIncident()` has inverted logic — returns `true` when there are **no** unresolved incidents (`incident == null`).
-- JSON output in some servlets has trailing commas and inconsistent timestamp quoting.
 
 ## Build & Run
 
@@ -113,7 +121,7 @@ scripts/reinit_db.sh all                # Clear ALL data including users and mon
 
 Deploy `target/SystemUptimeMonitor-1.0-SNAPSHOT.war` to Tomcat 9. Place `.env` file in Tomcat's working directory or set `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USERNAME`/`DB_PASSWORD` as environment variables.
 
-Dependencies: `javax.servlet-api` (provided), `postgresql` (JDBC driver), `jackson-core` (unused), `jbcrypt` (password hashing), JUnit 5 (test).
+Dependencies: `javax.servlet-api` (provided), `postgresql` (JDBC driver), `jersey-container-servlet`, `jersey-media-json-jackson`, `jersey-hk2`, `jackson-databind`, `jbcrypt` (password hashing), JUnit 5 (test).
 
 ## Frontend (React SPA)
 
@@ -149,7 +157,7 @@ npm run build          # Production build → src/main/webapp/
 ```
 
 ### API Proxy
-Vite dev server proxies `/api/*` to `localhost:9090`, stripping the `/api` prefix. Pages call `api.get('/api/monitors')` which becomes `GET /monitors` on Tomcat.
+Vite dev server proxies `/api/*` to `localhost:9090`, keeping the `/api` prefix intact. Jersey serves at `/api/*` via `@ApplicationPath("/api")`, so requests pass through unchanged (e.g., `api.get('/api/monitors')` → `GET /api/monitors` on Tomcat).
 
 ### Auth Pattern
 Cookie-based auth using the existing backend token system. `useAuth` hook provides `user`, `isAuthenticated`, `isAdmin`, `isOperator`, `logout`. Protected routes are guarded in `App.tsx` router config.

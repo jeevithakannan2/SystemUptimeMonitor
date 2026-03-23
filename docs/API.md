@@ -20,7 +20,7 @@ Authentication is via an HTTP-only cookie named `token` (set by the login endpoi
 Authenticates a user and sets a session token cookie.
 
 ```
-GET /login
+GET /api/login
 ```
 
 **Auth:** None
@@ -62,7 +62,7 @@ Sets cookie: `token=<UUID>; HttpOnly; Secure; Max-Age=3600`
 Registers a new user. If the organization (email domain) doesn't exist yet, the user becomes the admin and the org is created.
 
 ```
-POST /register
+POST /api/register
 ```
 
 **Auth:** None
@@ -89,7 +89,7 @@ POST /register
 Creates a user from an invite link. The role is inherited from the invite.
 
 ```
-POST /create
+POST /api/create
 ```
 
 **Auth:** None (validated via invite code)
@@ -118,7 +118,7 @@ POST /create
 Deletes a user by email. Admin only.
 
 ```
-DELETE /delete_user
+DELETE /api/delete_user
 ```
 
 **Auth:** Admin
@@ -127,7 +127,7 @@ DELETE /delete_user
 |-----------|------|----------|-------------|
 | `delete_email` | string | Yes | Email of user to delete |
 
-> **Note:** PUT/DELETE parameters are sent as URL-encoded request body, parsed by `RequestBodyParser`.
+> Parameters sent as `application/x-www-form-urlencoded` body.
 
 **Success Response:** `200 OK`
 
@@ -143,7 +143,7 @@ DELETE /delete_user
 Generates a single-use invite link for onboarding new users. Admin only.
 
 ```
-GET /generate_invitelink
+GET /api/generate_invitelink
 ```
 
 **Auth:** Admin
@@ -154,7 +154,7 @@ GET /generate_invitelink
 
 **Success Response (200):** `text/plain` — the invite code (a timestamp string).
 
-Users access the invite at: `/invite.html?code=<code>`
+Users access the invite at: `/invite?code=<code>`
 
 Invite links expire after **30 seconds** and are single-use.
 
@@ -165,6 +165,65 @@ Invite links expire after **30 seconds** and are single-use.
 | 400 | Role should be either operator or viewer |
 | 500 | Server error |
 
+### Get Organization Users
+
+Returns all users in the admin's organization.
+
+```
+GET /api/users
+```
+
+**Auth:** Admin
+
+**Success Response (200):**
+
+```json
+{
+  "users": [
+    {
+      "id": 1,
+      "email": "admin@example.com",
+      "role": "admin",
+      "organization": "example.com"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+| Status | Message |
+|--------|---------|
+| 500 | Failed to load users |
+
+### Update User Role
+
+Changes a user's role. Admin only.
+
+```
+PUT /api/update_role
+```
+
+**Auth:** Admin
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `user_id` | string | Yes | ID of the user to update |
+| `role` | string | Yes | New role: `operator` or `viewer` |
+
+> Parameters sent as `application/x-www-form-urlencoded` body.
+
+**Success Response:** `200 OK`
+
+**Error Responses:**
+
+| Status | Message |
+|--------|---------|
+| 400 | user_id and role are required |
+| 400 | user_id must be a valid number |
+| 400 | Role must be either operator or viewer |
+| 500 | Failed to update role |
+
 ---
 
 ## Monitors
@@ -174,7 +233,7 @@ Invite links expire after **30 seconds** and are single-use.
 Creates a new HTTP monitor.
 
 ```
-POST /create_monitor
+POST /api/create_monitor
 ```
 
 **Auth:** Operator
@@ -187,6 +246,7 @@ POST /create_monitor
 | `check_interval` | string | Yes | Check interval in seconds |
 | `enabled` | string | Yes | `"true"` or `"false"` |
 | `failure_count` | string | No | Failures before incident (default: 3) |
+| `is_public` | string | No | `"true"` or `"false"` (default: `"false"`) — if true, monitor appears on public status page |
 
 **Success Response:** `200 OK`
 
@@ -205,7 +265,7 @@ The monitor is immediately scheduled for background execution if enabled.
 Returns all monitors for the authenticated user's organization.
 
 ```
-GET /monitors
+GET /api/monitors
 ```
 
 **Auth:** Operator
@@ -224,7 +284,8 @@ GET /monitors
       "failure_count": 3,
       "organization": "example.com",
       "status_codes": [200, 301],
-      "enabled": true
+      "enabled": true,
+      "is_public": false
     }
   ]
 }
@@ -241,7 +302,7 @@ GET /monitors
 Updates an existing monitor. Only provided fields are changed.
 
 ```
-PUT /update_monitor
+PUT /api/update_monitor
 ```
 
 **Auth:** Operator
@@ -255,8 +316,9 @@ PUT /update_monitor
 | `check_interval` | string | No | New interval in seconds |
 | `enabled` | string | No | `"true"` or `"false"` |
 | `failure_count` | string | No | New failure threshold |
+| `is_public` | string | No | `"true"` or `"false"` — controls public visibility |
 
-> Parameters sent as URL-encoded request body.
+> Parameters sent as `application/x-www-form-urlencoded` body.
 
 **Success Response:** `200 OK`
 
@@ -276,7 +338,7 @@ The monitor is rescheduled in the background executor after update.
 Deletes a monitor and all its associated data (runs, incidents, status codes).
 
 ```
-DELETE /delete_monitor
+DELETE /api/delete_monitor
 ```
 
 **Auth:** Operator
@@ -285,7 +347,7 @@ DELETE /delete_monitor
 |-----------|------|----------|-------------|
 | `id` | string | Yes | Monitor ID |
 
-> Parameter sent as URL-encoded request body.
+> Parameters sent as `application/x-www-form-urlencoded` body.
 
 **Success Response:** `200 OK`
 
@@ -303,7 +365,7 @@ DELETE /delete_monitor
 Returns the audit trail for a specific monitor (create, update, delete events).
 
 ```
-GET /monitor_history
+GET /api/monitor_history
 ```
 
 **Auth:** Operator
@@ -350,7 +412,7 @@ GET /monitor_history
 Returns all incidents for the authenticated user's organization.
 
 ```
-GET /incidents
+GET /api/incidents
 ```
 
 **Auth:** Operator
@@ -387,7 +449,7 @@ GET /incidents
 Manually creates an incident for a monitor.
 
 ```
-POST /create_incident
+POST /api/create_incident
 ```
 
 **Auth:** Operator
@@ -414,7 +476,7 @@ Creates both a `MonitorRun` record and an `Incident` record in a single transact
 Resolves an open incident with optional notes.
 
 ```
-PUT /resolve_incident
+PUT /api/resolve_incident
 ```
 
 **Auth:** Operator
@@ -424,7 +486,7 @@ PUT /resolve_incident
 | `incident_id` | string | Yes | Incident ID |
 | `notes` | string | No | Resolution notes (max 256 characters) |
 
-> Parameters sent as URL-encoded request body.
+> Parameters sent as `application/x-www-form-urlencoded` body.
 
 **Success Response:** `200 OK`
 
@@ -445,10 +507,10 @@ PUT /resolve_incident
 
 ### View Organization Status
 
-Returns all monitors and their incidents for a given organization. This is the only endpoint that does not require authentication.
+Returns **public** monitors and their incidents for a given organization. Only monitors with `is_public = true` are included. This is the only endpoint that does not require authentication.
 
 ```
-GET /status
+GET /api/status
 ```
 
 **Auth:** None
@@ -472,6 +534,7 @@ GET /status
       "failure_count": 3,
       "organization": "example.com",
       "enabled": true,
+      "is_public": true,
       "incidents": [
         {
           "id": 1,
@@ -501,3 +564,33 @@ Where `totalDownTime` is the sum of all incident durations (using current time f
 | 400 | Missing required parameter: org |
 | 404 | Organization not found |
 | 500 | Failed to load status |
+
+### List Organizations
+
+Returns all registered organizations.
+
+```
+GET /api/organizations
+```
+
+**Auth:** None
+
+**Success Response (200):**
+
+```json
+{
+  "organizations": [
+    {
+      "id": 1,
+      "name": "example.com",
+      "schema_name": "org_example_com"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+| Status | Message |
+|--------|---------|
+| 500 | Failed to load organizations |

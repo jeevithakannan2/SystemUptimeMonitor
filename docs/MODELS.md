@@ -18,6 +18,7 @@ Represents a registered user within an organization.
 | `loggedIn` | `long` | Timestamp of last login (used for token expiration) |
 
 **Constructors:**
+- `User()` — no-arg constructor (required for Jersey/Jackson deserialization)
 - `User(int id, String email, String password, String role, String organization)` — full (from DB)
 - `User(String email, String password, String role, String organization)` — new user (no ID)
 
@@ -36,11 +37,12 @@ Represents an HTTP endpoint being monitored.
 | `failureCount` | `int` | Consecutive failures required before creating an incident |
 | `organization` | `String` | Organization name |
 | `enabled` | `boolean` | Whether background checks are active |
+| `isPublic` | `boolean` | Whether this monitor appears on the public status page (default: false) |
 | `statusCodes` | `ArrayList<Integer>` | Expected HTTP status codes (loaded separately from `status_codes` table) |
 
 **Constructors:**
-- `Monitor(int id, String name, String targetUrl, int checkInterval, long createdTime, int createdBy, int failureCount, String organization, boolean enabled)` — full
-- `Monitor(String name, String targetUrl, int checkInterval, long createdTime, int createdBy, int failureCount, String organization, boolean enabled)` — new (no ID)
+- `Monitor(int id, String name, String targetUrl, int checkInterval, long createdTime, int createdBy, int failureCount, String organization, boolean enabled, boolean isPublic)` — full
+- `Monitor(String name, String targetUrl, int checkInterval, long createdTime, int createdBy, int failureCount, String organization, boolean enabled, boolean isPublic)` — new (no ID)
 
 **Notable method:**
 - `isExpectedStatusCode(int statusCode)` — checks if a status code is in the expected list
@@ -136,6 +138,8 @@ CREATE TABLE organizations (
 );
 ```
 
+> `OrganizationDao` queries the `public.organizations` table to list all orgs. It has no dedicated model class — results are returned as `Map<String, Object>` entries.
+
 ### Per-Organization Schema
 
 Each org gets an isolated schema (e.g., `org_example_com`) with these tables:
@@ -177,7 +181,8 @@ CREATE TABLE monitors (
     created_by     INTEGER       NOT NULL REFERENCES users(id),
     failure_count  INTEGER       NOT NULL DEFAULT 0,
     organization   VARCHAR(255)  NOT NULL,
-    enabled        BOOLEAN       NOT NULL DEFAULT TRUE
+    enabled        BOOLEAN       NOT NULL DEFAULT TRUE,
+    is_public      BOOLEAN       NOT NULL DEFAULT FALSE
 );
 ```
 

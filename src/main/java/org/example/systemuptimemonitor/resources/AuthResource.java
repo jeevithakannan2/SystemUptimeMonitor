@@ -24,6 +24,7 @@ import java.sql.SQLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+@Path("/")
 public class AuthResource {
     private static final Logger LOG = Logger.getLogger(AuthResource.class.getName());
 
