@@ -1,0 +1,1 @@
+import{T as e,j as t}from"./api-BQKPhaLM.js";var n=t(),r={up:`bg-success`,down:`bg-destructive animate-pulse`,disabled:`bg-muted-foreground`};function i({status:t}){return(0,n.jsx)(`span`,{className:e(`inline-block h-2.5 w-2.5 rounded-full shrink-0`,r[t])})}export{i as t};
