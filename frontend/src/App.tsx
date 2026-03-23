@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
@@ -5,12 +6,13 @@ import { SidebarProvider, useSidebar } from '@/hooks/useSidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
 import { NavRail } from '@/components/NavRail';
-import Login from '@/pages/Login';
-import Register from '@/pages/Register';
-import Invite from '@/pages/Invite';
-import Dashboard from '@/pages/Dashboard';
-import Admin from '@/pages/Admin';
-import { Status } from '@/pages/Status';
+
+const Login = lazy(() => import('@/pages/Login'));
+const Register = lazy(() => import('@/pages/Register'));
+const Invite = lazy(() => import('@/pages/Invite'));
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const Admin = lazy(() => import('@/pages/Admin'));
+const Status = lazy(() => import('@/pages/Status').then(m => ({ default: m.Status })));
 
 function AuthLayout() {
   const { isAuthenticated, isOperator } = useAuth();
@@ -40,19 +42,21 @@ function AdminRoute() {
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/invite" element={<Invite />} />
-      <Route path="/status" element={<Status />} />
-      <Route element={<AuthLayout />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route element={<AdminRoute />}>
-          <Route path="/admin" element={<Admin />} />
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/invite" element={<Invite />} />
+        <Route path="/status" element={<Status />} />
+        <Route element={<AuthLayout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route element={<AdminRoute />}>
+            <Route path="/admin" element={<Admin />} />
+          </Route>
         </Route>
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 
